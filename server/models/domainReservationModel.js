@@ -2,10 +2,10 @@
 const pool = require('../db');
 
 class DomainReservation {
-  static async create(userId, domainName, offerId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
+  static async create(userId, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
     const [result] = await pool.query(
-      'INSERT INTO domain_reservations (user_id, domain_name, offer_id, technologies, project_type, hosting_needed, additional_services, preferred_contact_method, project_deadline, budget_range, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId || null, domainName, offerId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, 'pending']
+      'INSERT INTO domain_reservations (user_id, domain_name, offer_id, hosting_offer_id, technologies, project_type, hosting_needed, additional_services, preferred_contact_method, project_deadline, budget_range, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId || null, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, 'pending']
     );
     return result.insertId;
   }
@@ -17,7 +17,7 @@ class DomainReservation {
 
   static async findByUserId(userId) {
     const [rows] = await pool.query(
-      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id WHERE dr.user_id = ?',
+      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id WHERE dr.user_id = ?',
       [userId]
     );
     return rows;
@@ -25,15 +25,15 @@ class DomainReservation {
 
   static async findAll() {
     const [rows] = await pool.query(
-      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, u.nom, u.prenom, u.email FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN users u ON dr.user_id = u.id'
+      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price, u.nom, u.prenom, u.email FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id LEFT JOIN users u ON dr.user_id = u.id'
     );
     return rows;
   }
 
-  static async update(id, domainName, offerId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
+  static async update(id, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
     await pool.query(
-      'UPDATE domain_reservations SET domain_name = ?, offer_id = ?, technologies = ?, project_type = ?, hosting_needed = ?, additional_services = ?, preferred_contact_method = ?, project_deadline = ?, budget_range = ?, updated_at = NOW() WHERE id = ? AND status = ?',
-      [domainName, offerId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, id, 'pending']
+      'UPDATE domain_reservations SET domain_name = ?, offer_id = ?, hosting_offer_id = ?, technologies = ?, project_type = ?, hosting_needed = ?, additional_services = ?, preferred_contact_method = ?, project_deadline = ?, budget_range = ?, updated_at = NOW() WHERE id = ? AND status = ?',
+      [domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, id, 'pending']
     );
   }
 
@@ -50,7 +50,7 @@ class DomainReservation {
       'SELECT * FROM domain_reservations WHERE domain_name = ? AND status = ?',
       [domainName, 'accepted']
     );
-    return rows.length === 0; // Retourne true si le domaine est disponible
+    return rows.length === 0;
   }
 }
 

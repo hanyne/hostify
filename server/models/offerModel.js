@@ -7,23 +7,29 @@ class Offer {
     return rows[0];
   }
 
-  static async findAll() {
-    const [rows] = await pool.query('SELECT * FROM offers');
+  static async findAll(type = null) {
+    let query = 'SELECT * FROM offers';
+    const params = [];
+    if (type) {
+      query += ' WHERE offer_type = ?';
+      params.push(type);
+    }
+    const [rows] = await pool.query(query, params);
     return rows;
   }
 
-  static async create(name, duration_months, price, description, features, domain_type) {
+  static async create(name, duration_months, price, description, features, domain_type, offer_type, storage_space, bandwidth) {
     const [result] = await pool.query(
-      'INSERT INTO offers (name, duration_months, price, description, features, domain_type) VALUES (?, ?, ?, ?, ?, ?)',
-      [name, duration_months, price, description, features, domain_type]
+      'INSERT INTO offers (name, duration_months, price, description, features, domain_type, offer_type, storage_space, bandwidth) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, duration_months, price, description, features, domain_type, offer_type, storage_space, bandwidth]
     );
     return result.insertId;
   }
 
-  static async update(id, name, duration_months, price, description, features, domain_type) {
+  static async update(id, name, duration_months, price, description, features, domain_type, offer_type, storage_space, bandwidth) {
     await pool.query(
-      'UPDATE offers SET name = ?, duration_months = ?, price = ?, description = ?, features = ?, domain_type = ? WHERE id = ?',
-      [name, duration_months, price, description, features, domain_type, id]
+      'UPDATE offers SET name = ?, duration_months = ?, price = ?, description = ?, features = ?, domain_type = ?, offer_type = ?, storage_space = ?, bandwidth = ?, updated_at = NOW() WHERE id = ?',
+      [name, duration_months, price, description, features, domain_type, offer_type, storage_space, bandwidth, id]
     );
   }
 

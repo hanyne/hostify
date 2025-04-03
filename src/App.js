@@ -12,7 +12,7 @@ import ResetPassword from './pages/ResetPassword';
 import Contact from './pages/Contact';
 import Dashboard from './pages/Dashboard';
 import DomainReservations from './pages/DomainReservations';
-
+import Offers from './pages/Offers';
 function App() {
   return (
     <Router>
@@ -24,6 +24,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/offers" element={<Offers />} /> {/* Nouvelle route */}
         <Route path="/domain-reservations" element={<DomainReservations isAdmin={false} />} />
         <Route path="/" element={<Login />} /> {/* Page par défaut */}
     </Routes>
