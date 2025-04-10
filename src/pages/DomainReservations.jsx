@@ -1,6 +1,6 @@
 // client/src/DomainReservations.jsx
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaUpload, FaFileAlt } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUpload, FaFileAlt, FaEye } from 'react-icons/fa';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 
@@ -155,6 +155,8 @@ const DomainReservations = () => {
       });
       setShowUploadForm(null);
       fetchProjectFiles(reservationId); // Rafraîchir la liste des fichiers
+      const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+      setReservations(response.data); // Rafraîchir la liste des réservations pour afficher la nouvelle URL déployée
       setError(null);
     } catch (error) {
       console.error('Erreur lors de l\'upload des fichiers:', error.response ? error.response.data : error.message);
@@ -170,6 +172,8 @@ const DomainReservations = () => {
         await axios.delete(`http://localhost:5000/api/project-files/${fileId}`);
         console.log('Fichier supprimé avec succès');
         fetchProjectFiles(reservationId); // Rafraîchir la liste des fichiers
+        const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+        setReservations(response.data); // Rafraîchir la liste des réservations pour afficher la nouvelle URL déployée
         setError(null);
       } catch (error) {
         console.error('Erreur lors de la suppression du fichier:', error.response ? error.response.data : error.message);
@@ -204,6 +208,7 @@ const DomainReservations = () => {
                   <th>Technologies</th>
                   <th>Type de Projet</th>
                   <th>Statut</th>
+                  <th>URL Déployée</th>
                   <th>Actions</th>
                   <th>Fichiers</th>
                 </tr>
@@ -217,6 +222,15 @@ const DomainReservations = () => {
                     <td>{reservation.technologies}</td>
                     <td>{reservation.project_type}</td>
                     <td>{reservation.status}</td>
+                    <td>
+                      {reservation.deployed_url ? (
+                        <a href={reservation.deployed_url} target="_blank" rel="noopener noreferrer">
+                          <FaEye /> Voir le site
+                        </a>
+                      ) : (
+                        'Non déployé'
+                      )}
+                    </td>
                     <td>
                       <button
                         className="edit-btn"
