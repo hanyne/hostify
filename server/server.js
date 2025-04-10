@@ -17,15 +17,17 @@ app.use(express.urlencoded({ extended: true }));
 // Servir les fichiers statiques depuis le dossier public pour l'hébergement
 app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' })); // Ajout
 app.use((req, res, next) => {
-  const host = req.headers.host; // Par exemple, "mon-autre-site-fr.localhost:5000"
+  const host = req.headers.host; // Par exemple, "mon-autre-site-fr.hostify-xyz.onrender.com"
   console.log('Host détecté:', host); // Log pour déboguer
   // Séparer le domaine et le port
-  const [domain, port] = host.split(':'); // Par exemple, ["mon-autre-site-fr.localhost", "5000"]
-  const hostParts = domain.split('.'); // Séparer les parties du domaine, par exemple ["mon-autre-site-fr", "localhost"]
-  if (hostParts.length >= 2 && hostParts[hostParts.length - 1] === 'localhost') { // Vérifier si c'est un sous-domaine de localhost
+  const [domain, port] = host.split(':'); // Par exemple, ["mon-autre-site-fr.hostify-xyz.onrender.com"]
+  const hostParts = domain.split('.'); // Séparer les parties du domaine
+  const baseDomain = process.env.BASE_DOMAIN || 'localhost'; // Utiliser BASE_DOMAIN en production
+  const baseDomainParts = baseDomain.split('.'); // Par exemple, ["hostify-xyz", "onrender", "com"]
+  if (hostParts.length > baseDomainParts.length) { // Vérifier si c'est un sous-domaine
     const sub = hostParts[0]; // Par exemple, "mon-autre-site-fr"
     console.log('Sous-domaine détecté:', sub); // Log pour déboguer
-    const domainName = sub; // Ne pas convertir les tirets en points, garder "mon-autre-site.fr"
+    const domainName = sub; // Ne pas convertir les tirets en points, garder "mon-autre-site-fr"
     console.log('Nom de domaine:', domainName); // Log pour déboguer
     const sitePath = path.join(__dirname, 'public/sites', domainName);
     console.log('Chemin du site:', sitePath); // Log pour déboguer
@@ -37,6 +39,14 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Servir le frontend (fichiers statiques de React) en production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '..', 'build'))); // Ajusté pour pointer vers hostify/build/
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
+  });
+}
 
 // Routes - utiliser directement le router sans préfixe supplémentaire
 app.use(router); // Au lieu de app.use('/', router)
