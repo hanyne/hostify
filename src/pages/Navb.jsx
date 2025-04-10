@@ -75,7 +75,7 @@ const Navbar = () => {
                       </a>
                     </li>
                     <li className="nav-item">
-                      <a className="page-scroll" href="#contact">
+                      <a className="page-scroll" href="/contact">
                         Contact
                       </a>
                     </li>
