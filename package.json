@@ -10,6 +10,7 @@
     "adm-zip": "^0.5.16",
     "animate.css": "^4.1.1",
     "axios": "^1.8.1",
+    "bcryptjs": "^3.0.2",
     "bootstrap": "^5.0.0-beta1",
     "cpanel-lib": "^0.0.5",
     "dotenv": "^16.4.7",

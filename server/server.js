@@ -5,7 +5,7 @@ const router = require('./routes/authRoutes'); // Corriger le chemin vers index.
 require('dotenv').config();
 const path = require('path'); // Ajout pour gérer les chemins
 const fs = require('fs');
-
+const bcrypt = require('bcryptjs'); // Change this line
 const app = express();
 const PORT = process.env.PORT || 5000;
 
