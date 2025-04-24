@@ -1,6 +1,6 @@
 // server/models/projectFileModel.js
 const pool = require('../db');
-
+const bcrypt = require('bcryptjs');
 class ProjectFile {
   static async create(reservationId, filePath, fileName) {
     const [result] = await pool.query(
