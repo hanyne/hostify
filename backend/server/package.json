@@ -6,7 +6,7 @@
  "scripts": {
   "prebuild": "rm -rf node_modules",
   "build": "cd client && npm install && npm run build",
-  "start": "node server/server.js",
+  "start": "node server.js",
   "postinstall": "npm rebuild bcrypt --build-from-source"
   
 },

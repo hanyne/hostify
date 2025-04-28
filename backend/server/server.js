@@ -1,4 +1,3 @@
-// server/server.js
 const express = require('express');
 const cors = require('cors');
 const router = require('./routes/authRoutes'); // Corriger le chemin vers index.js

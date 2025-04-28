@@ -20,21 +20,17 @@ const Login = () => {
     try {
       const response = await axios.post('http://localhost:5000/api/login', formData);
       setMessage(response.data.message);
-      
-      // Stocker les données utilisateur dans localStorage
       localStorage.setItem('user', JSON.stringify(response.data.user));
-      
-      // Redirection selon le rôle
       if (response.data.user.role === 'admin') {
         navigate('/dashboard');
       } else {
         navigate('/home');
       }
     } catch (error) {
+      console.error('Login error:', error.response || error);
       setMessage(error.response?.data?.message || 'Erreur lors de la connexion.');
     }
   };
-  
     return (
       <>
         <div className="preloader">
