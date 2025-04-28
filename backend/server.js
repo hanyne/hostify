@@ -1,10 +1,12 @@
 const express = require('express');
 const cors = require('cors');
-const router = require('./routes/authRoutes'); // Corriger le chemin vers index.js
+const router = require('./routes/authRoutes');
 require('dotenv').config();
-const path = require('path'); // Ajout pour gérer les chemins
+const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcryptjs'); // Change this line
+const bcrypt = require('bcryptjs');
+const fileUpload = require('express-fileupload');
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -12,24 +14,25 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
 
-// Servir les fichiers statiques depuis le dossier public pour l'hébergement
-app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' })); // Ajout
+// Serve static files for hosting
+app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' }));
+
 app.use((req, res, next) => {
-  const host = req.headers.host; // Par exemple, "mon-autre-site-fr.hostify-xyz.onrender.com"
-  console.log('Host détecté:', host); // Log pour déboguer
-  // Séparer le domaine et le port
-  const [domain, port] = host.split(':'); // Par exemple, ["mon-autre-site-fr.hostify-xyz.onrender.com"]
-  const hostParts = domain.split('.'); // Séparer les parties du domaine
-  const baseDomain = process.env.BASE_DOMAIN || 'localhost'; // Utiliser BASE_DOMAIN en production
-  const baseDomainParts = baseDomain.split('.'); // Par exemple, ["hostify-xyz", "onrender", "com"]
-  if (hostParts.length > baseDomainParts.length) { // Vérifier si c'est un sous-domaine
-    const sub = hostParts[0]; // Par exemple, "mon-autre-site-fr"
-    console.log('Sous-domaine détecté:', sub); // Log pour déboguer
-    const domainName = sub; // Ne pas convertir les tirets en points, garder "mon-autre-site-fr"
-    console.log('Nom de domaine:', domainName); // Log pour déboguer
+  const host = req.headers.host;
+  console.log('Host détecté:', host);
+  const [domain, port] = host.split(':');
+  const hostParts = domain.split('.');
+  const baseDomain = process.env.BASE_DOMAIN || 'localhost';
+  const baseDomainParts = baseDomain.split('.');
+  if (hostParts.length > baseDomainParts.length) {
+    const sub = hostParts[0];
+    console.log('Sous-domaine détecté:', sub);
+    const domainName = sub;
+    console.log('Nom de domaine:', domainName);
     const sitePath = path.join(__dirname, 'public/sites', domainName);
-    console.log('Chemin du site:', sitePath); // Log pour déboguer
+    console.log('Chemin du site:', sitePath);
     if (fs.existsSync(sitePath) && fs.existsSync(path.join(sitePath, 'index.html'))) {
       return express.static(sitePath, { index: 'index.html' })(req, res, next);
     } else {
@@ -39,22 +42,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir le frontend (fichiers statiques de React) en production
+// Serve the frontend (React build) in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '..', 'build'))); // Ajusté pour pointer vers hostify/build/
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'build', 'index.html'));
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
 }
 
-// Routes - utiliser directement le router sans préfixe supplémentaire
-app.use(router); // Au lieu de app.use('/', router)
+// Routes
+app.use(router);
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: 'Erreur interne du serveur.' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
 });
