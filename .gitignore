@@ -5,10 +5,9 @@
 /.pnp
 .pnp.js
 node_modules/
-build/
-#frontend/build/
+server/node_modules/
 .env
-*.env.local
+build/
 # testing
 /coverage
 

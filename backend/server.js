@@ -75,7 +75,7 @@ app.use((req, res, next) => {
 
 // Serve the frontend (React build) in production
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, '../frontend/build');
+  const buildPath = path.join(__dirname, 'build'); // Changed to root build directory
   if (fs.existsSync(buildPath) && fs.existsSync(path.join(buildPath, 'index.html'))) {
     app.use(express.static(buildPath));
     app.get('*', (req, res) => {
