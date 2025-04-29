@@ -1,17 +1,46 @@
 const express = require('express');
 const cors = require('cors');
 const router = require('./routes/authRoutes');
-require('dotenv').config();
+const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
-const bcrypt = require('bcryptjs');
 const fileUpload = require('express-fileupload');
+
+// Force NODE_ENV=development for local runs if not on Render
+if (!process.env.IS_RENDER) {
+  process.env.NODE_ENV = 'development';
+}
+
+// Load environment variables
+const envFile = process.env.IS_RENDER ? '.env' : '.env.local';
+try {
+  const result = dotenv.config({ path: envFile });
+  if (result.error) {
+    console.error(`Failed to load ${envFile}:`, result.error.message);
+  } else {
+    console.log(`Successfully loaded ${envFile}`);
+  }
+} catch (error) {
+  console.error(`Error loading ${envFile}:`, error.message);
+}
+
+console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
+console.log('IS_RENDER:', process.env.IS_RENDER || 'not set');
+console.log('Environment Variables:');
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_PORT:', process.env.DB_PORT);
+console.log('DB_USER:', process.env.DB_USER);
+console.log('DB_NAME:', process.env.DB_NAME);
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
@@ -51,12 +80,26 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Routes
-app.use(router);
+app.use('/api', router);
 
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error('Server Error:', err.stack);
   res.status(500).json({ message: 'Erreur interne du serveur.' });
 });
+
+// Test database connection on startup
+const pool = require('./db');
+async function testDatabaseConnection() {
+  try {
+    const connection = await pool.getConnection();
+    console.log('Database connection successful!');
+    connection.release();
+  } catch (error) {
+    console.error('Database connection error:', error.message);
+  }
+}
+testDatabaseConnection();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur démarré sur le port ${PORT}`);

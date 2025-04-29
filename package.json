@@ -3,7 +3,11 @@
     "version": "1.0.0",
     "private": true,
     "scripts": {
-      "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
-      "start": "cd backend && npm start"
+        "build": "cd frontend && npm install && npm run build && cd .. && node move-build.js && cd backend && npm install",
+        "start": "cd backend && npm start"
+        
+    },
+    "dependencies": {
+        "bcryptjs": "^3.0.2"
     }
-  }
+}
