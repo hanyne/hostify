@@ -36,7 +36,7 @@ console.log('DB_NAME:', process.env.DB_NAME || 'not set');
 console.log('FRONTEND_URL:', process.env.FRONTEND_URL || 'not set');
 
 const app = express();
-const PORT = process.env.PORT || 5000; // Fallback to 5000
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
@@ -75,10 +75,18 @@ app.use((req, res, next) => {
 
 // Serve the frontend (React build) in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
-  });
+  const buildPath = path.join(__dirname, '../frontend/build');
+  if (fs.existsSync(buildPath) && fs.existsSync(path.join(buildPath, 'index.html'))) {
+    app.use(express.static(buildPath));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(buildPath, 'index.html'));
+    });
+  } else {
+    console.error('Frontend build not found at:', buildPath);
+    app.get('*', (req, res) => {
+      res.status(500).json({ message: 'Frontend build not found. Please contact the administrator.' });
+    });
+  }
 }
 
 // Routes
