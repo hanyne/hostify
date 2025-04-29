@@ -1,16 +1,19 @@
+// move-build.js
 const fs = require('fs');
 const path = require('path');
 
-const source = path.join(__dirname, 'frontend', 'build');
+const source = path.join(__dirname, 'frontend/build');
 const destination = path.join(__dirname, 'build');
 
-if (fs.existsSync(source)) {
+try {
+  // Remove destination directory if it exists
   if (fs.existsSync(destination)) {
     fs.rmSync(destination, { recursive: true, force: true });
   }
-  fs.renameSync(source, destination);
-  console.log('Moved build folder to root');
-} else {
-  console.error('Error: frontend/build folder not found');
+  // Copy frontend/build to build
+  fs.cpSync(source, destination, { recursive: true });
+  console.log('Build moved to root build directory');
+} catch (error) {
+  console.error('Error moving build:', error);
   process.exit(1);
 }
