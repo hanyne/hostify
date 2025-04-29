@@ -25,15 +25,13 @@ if (process.env.IS_RENDER) {
   process.env.NODE_ENV = 'production';
 }
 
-console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
-console.log('IS_RENDER:', process.env.IS_RENDER || 'not set');
+require('dotenv').config();
 console.log('Environment Variables:');
-console.log('PORT:', process.env.PORT || 'not set');
-console.log('DB_HOST:', process.env.DB_HOST || 'not set');
-console.log('DB_PORT:', process.env.DB_PORT || 'not set');
-console.log('DB_USER:', process.env.DB_USER || 'not set');
-console.log('DB_NAME:', process.env.DB_NAME || 'not set');
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL || 'not set');
+console.log('DB_HOST:', process.env.DB_HOST);
+console.log('DB_PORT:', process.env.DB_PORT);
+console.log('DB_USER:', process.env.DB_USER);
+console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
+console.log('DB_NAME:', process.env.DB_NAME);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
