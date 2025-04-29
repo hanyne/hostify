@@ -3,19 +3,18 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
- "scripts": {
-  "prebuild": "rm -rf node_modules",
-  "build": "cd client && npm install && npm run build",
-  "start": "node server.js",
-  "postinstall": "npm rebuild bcrypt --build-from-source"
-  
-},
+  "scripts": {
+    "prebuild": "rm -rf node_modules",
+    "build": "cd client && npm install && npm run build",
+    "start": "node server.js",
+    "postinstall": "npm rebuild bcrypt --build-from-source"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "adm-zip": "^0.5.16",
-    "bcrypt": "^5.1.1",
+    "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
