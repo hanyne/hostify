@@ -1,3 +1,4 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const router = require('./routes/authRoutes');
@@ -5,11 +6,6 @@ const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
-
-// Force NODE_ENV=development for local runs if not on Render
-if (!process.env.IS_RENDER) {
-  process.env.NODE_ENV = 'development';
-}
 
 // Load environment variables
 const envFile = process.env.IS_RENDER ? '.env' : '.env.local';
@@ -24,17 +20,23 @@ try {
   console.error(`Error loading ${envFile}:`, error.message);
 }
 
+// Force NODE_ENV=production for Render
+if (process.env.IS_RENDER) {
+  process.env.NODE_ENV = 'production';
+}
+
 console.log('NODE_ENV:', process.env.NODE_ENV || 'not set');
 console.log('IS_RENDER:', process.env.IS_RENDER || 'not set');
 console.log('Environment Variables:');
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('FRONTEND_URL:', process.env.FRONTEND_URL);
+console.log('PORT:', process.env.PORT || 'not set');
+console.log('DB_HOST:', process.env.DB_HOST || 'not set');
+console.log('DB_PORT:', process.env.DB_PORT || 'not set');
+console.log('DB_USER:', process.env.DB_USER || 'not set');
+console.log('DB_NAME:', process.env.DB_NAME || 'not set');
+console.log('FRONTEND_URL:', process.env.FRONTEND_URL || 'not set');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000; // Fallback to 5000
 
 // Middleware
 app.use(cors({
@@ -96,11 +98,17 @@ async function testDatabaseConnection() {
     console.log('Database connection successful!');
     connection.release();
   } catch (error) {
-    console.error('Database connection error:', error.message);
+    console.error('Database connection error:', {
+      message: error.message,
+      code: error.code,
+      errno: error.errno,
+      sqlMessage: error.sqlMessage || 'N/A',
+    });
   }
 }
 testDatabaseConnection();
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
+  console.log(`Listening explicitly on port ${PORT} to avoid auto-detection issues`);
 });
