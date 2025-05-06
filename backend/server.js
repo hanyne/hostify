@@ -1,4 +1,3 @@
-// server.js
 const express = require('express');
 const cors = require('cors');
 const router = require('./routes/authRoutes');
@@ -7,31 +6,31 @@ const path = require('path');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
 
-// Load environment variables
-const envFile = process.env.IS_RENDER ? '.env' : '.env.local';
+// Determine the environment and load the correct .env file
+const isRender = process.env.IS_RENDER === 'true'; // Only true if explicitly set
+const envFile = isRender ? '.env' : '.env.local';
 try {
   const result = dotenv.config({ path: envFile });
   if (result.error) {
-    console.error(`Failed to load ${envFile}:`, result.error.message);
-  } else {
-    console.log(`Successfully loaded ${envFile}`);
+    throw result.error;
   }
+  console.log(`Successfully loaded ${envFile}`);
 } catch (error) {
-  console.error(`Error loading ${envFile}:`, error.message);
+  console.error(`Failed to load ${envFile}:`, error.message);
+  process.exit(1); // Exit if .env loading fails
 }
 
-// Force NODE_ENV=production for Render
-if (process.env.IS_RENDER) {
-  process.env.NODE_ENV = 'production';
-}
+// Set NODE_ENV based on environment
+process.env.NODE_ENV = isRender ? 'production' : 'development';
 
-require('dotenv').config();
+// Log environment variables for debugging
 console.log('Environment Variables:');
 console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_PORT:', process.env.DB_PORT);
 console.log('DB_USER:', process.env.DB_USER);
 console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
 console.log('DB_NAME:', process.env.DB_NAME);
+console.log('NODE_ENV:', process.env.NODE_ENV);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -73,7 +72,7 @@ app.use((req, res, next) => {
 
 // Serve the frontend (React build) in production
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, 'build'); // Changed to root build directory
+  const buildPath = path.join(__dirname, '../build');
   if (fs.existsSync(buildPath) && fs.existsSync(path.join(buildPath, 'index.html'))) {
     app.use(express.static(buildPath));
     app.get('*', (req, res) => {
