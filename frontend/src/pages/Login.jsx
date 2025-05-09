@@ -3,6 +3,11 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from '../assets/images/bg-01.jpg';
 
+// Determine the API URL based on the environment
+const API_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://hostify-zvms.onrender.com/api' 
+  : 'http://localhost:5000/api';
+
 const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -19,8 +24,8 @@ const Login = () => {
     e.preventDefault();
     console.log('Form submitted:', formData);
     try {
-      console.log('Submitting login request:', formData);
-      const response = await axios.post('http://localhost:5000/api/login', formData);
+      console.log('Submitting login request to:', `${API_URL}/login`, formData);
+      const response = await axios.post(`${API_URL}/login`, formData);
       console.log('Login response:', response.data);
       setMessage(response.data.message);
       localStorage.setItem('user', JSON.stringify(response.data.user));
