@@ -32,7 +32,7 @@ if (fs.existsSync(envPath)) {
       PORT: process.env.PORT || 'NOT_SET',
       FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
       BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
-      JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET', // Redact JWT_SECRET
+      JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET',
       EMAIL_HOST: process.env.EMAIL_HOST || 'NOT_SET',
       EMAIL_PORT: process.env.EMAIL_PORT || 'NOT_SET',
       EMAIL_USER: process.env.EMAIL_USER || 'NOT_SET',
@@ -54,7 +54,7 @@ if (fs.existsSync(envPath)) {
     PORT: process.env.PORT || 'NOT_SET',
     FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
     BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
-    JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET', // Redact JWT_SECRET
+    JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET',
     EMAIL_HOST: process.env.EMAIL_HOST || 'NOT_SET',
     EMAIL_PORT: process.env.EMAIL_PORT || 'NOT_SET',
     EMAIL_USER: process.env.EMAIL_USER || 'NOT_SET',
@@ -84,7 +84,7 @@ for (const envVar of requiredEnvVars) {
 
 // Initialize database pool
 console.log('Requiring db.js now...');
-const pool = require('./db'); // Now imports the pool directly
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
