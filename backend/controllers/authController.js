@@ -1,6 +1,6 @@
 // server/controllers/authController.js
 const User = require('../models/userModel');
-const bcrypt = require('bcryptjs');
+const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 require('dotenv').config();
@@ -20,15 +20,9 @@ const authController = {
   register: async (req, res) => {
     const { nom, prenom, email, mot_de_passe } = req.body;
     try {
-      console.log('Register attempt:', { nom, prenom, email });
       const existingUser = await User.findByEmail(email);
-      if (existingUser) {
-        console.log('Email already exists:', email);
-        return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
-      }
-      console.log('Creating new user...');
+      if (existingUser) return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
       await User.createUser(nom, prenom, email, mot_de_passe, 'client');
-      console.log('User created successfully');
       res.status(201).json({ message: 'Client ajouté avec succès !' });
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', error);
@@ -39,19 +33,10 @@ const authController = {
   login: async (req, res) => {
     const { email, mot_de_passe } = req.body;
     try {
-      console.log('Login attempt:', { email });
       const user = await User.findByEmail(email);
-      if (!user) {
-        console.log('User not found:', email);
-        return res.status(400).json({ message: 'Email ou mot de passe incorrect.' });
-      }
-      console.log('User found:', user.email);
+      if (!user) return res.status(400).json({ message: 'Email ou mot de passe incorrect.' });
       const isMatch = await bcrypt.compare(mot_de_passe, user.mot_de_passe);
-      if (!isMatch) {
-        console.log('Password mismatch for user:', email);
-        return res.status(400).json({ message: 'Email ou mot de passe incorrect.' });
-      }
-      console.log('Password matched, generating token...');
+      if (!isMatch) return res.status(400).json({ message: 'Email ou mot de passe incorrect.' });
       const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
       res.status(200).json({ 
         message: 'Connexion réussie !', 
@@ -63,6 +48,7 @@ const authController = {
       res.status(500).json({ message: 'Erreur serveur.' });
     }
   },
+
   forgotPassword: async (req, res) => {
     const { email } = req.body;
     try {

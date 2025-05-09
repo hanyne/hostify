@@ -1,119 +1,111 @@
 const express = require('express');
 const cors = require('cors');
-const router = require('./routes/authRoutes');
+const authRoutes = require('./routes/authRoutes');
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
 
-// Determine the environment and load the correct .env file
-const isRender = process.env.IS_RENDER === 'true'; // Only true if explicitly set
-const envFile = isRender ? '.env' : '.env.local';
+// Load .env file
+const envPath = path.join(__dirname, '.env');
+console.log('Looking for .env at:', envPath);
+
+if (!fs.existsSync(envPath)) {
+  console.error('.env file does not exist at:', envPath);
+  process.exit(1);
+} else {
+  console.log('.env file found at:', envPath);
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  console.log('Content of .env file:', envContent);
+}
+
 try {
-  const result = dotenv.config({ path: envFile });
+  const result = dotenv.config({ path: envPath });
   if (result.error) {
     throw result.error;
   }
-  console.log(`Successfully loaded ${envFile}`);
+  console.log('Successfully loaded .env from:', envPath);
+  console.log('Parsed .env variables:', result.parsed);
 } catch (error) {
-  console.error(`Failed to load ${envFile}:`, error.message);
-  process.exit(1); // Exit if .env loading fails
+  console.error('Failed to load .env:', error.message);
+  process.exit(1);
 }
 
-// Set NODE_ENV based on environment
-process.env.NODE_ENV = isRender ? 'production' : 'development';
+// Log environment variables
+console.log('Environment Variables:', {
+  DB_HOST: process.env.DB_HOST || 'NOT_SET',
+  DB_PORT: process.env.DB_PORT || 'NOT_SET',
+  DB_USER: process.env.DB_USER || 'NOT_SET',
+  DB_PASSWORD: process.env.DB_PASSWORD ? '[REDACTED]' : 'NOT_SET',
+  DB_NAME: process.env.DB_NAME || 'NOT_SET',
+  NODE_ENV: process.env.NODE_ENV || 'NOT_SET',
+  PORT: process.env.PORT || 'NOT_SET',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
+  BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
+});
 
-// Log environment variables for debugging
-console.log('Environment Variables:');
-console.log('DB_HOST:', process.env.DB_HOST);
-console.log('DB_PORT:', process.env.DB_PORT);
-console.log('DB_USER:', process.env.DB_USER);
-console.log('DB_PASSWORD:', process.env.DB_PASSWORD);
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('NODE_ENV:', process.env.NODE_ENV);
+// Initialize database pool **after** .env is loaded
+const pool = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL,
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
   credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
 
-// Serve static files for hosting
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
 app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' }));
 
 app.use((req, res, next) => {
   const host = req.headers.host;
-  console.log('Host détecté:', host);
+  console.log('Host detected:', host);
   const [domain, port] = host.split(':');
   const hostParts = domain.split('.');
   const baseDomain = process.env.BASE_DOMAIN || 'localhost';
   const baseDomainParts = baseDomain.split('.');
   if (hostParts.length > baseDomainParts.length) {
     const sub = hostParts[0];
-    console.log('Sous-domaine détecté:', sub);
+    console.log('Subdomain detected:', sub);
     const domainName = sub;
-    console.log('Nom de domaine:', domainName);
+    console.log('Domain name:', domainName);
     const sitePath = path.join(__dirname, 'public/sites', domainName);
-    console.log('Chemin du site:', sitePath);
+    console.log('Site path:', sitePath);
     if (fs.existsSync(sitePath) && fs.existsSync(path.join(sitePath, 'index.html'))) {
       return express.static(sitePath, { index: 'index.html' })(req, res, next);
     } else {
-      return res.status(404).json({ message: `Site non trouvé pour le sous-domaine ${sub}` });
+      return res.status(404).json({ message: `Site not found for subdomain ${sub}` });
     }
   }
   next();
 });
 
-// Serve the frontend (React build) in production
+// Serve frontend build in production
 if (process.env.NODE_ENV === 'production') {
-  const buildPath = path.join(__dirname, '../build');
-  if (fs.existsSync(buildPath) && fs.existsSync(path.join(buildPath, 'index.html'))) {
-    app.use(express.static(buildPath));
-    app.get('*', (req, res) => {
-      res.sendFile(path.join(buildPath, 'index.html'));
-    });
-  } else {
-    console.error('Frontend build not found at:', buildPath);
-    app.get('*', (req, res) => {
-      res.status(500).json({ message: 'Frontend build not found. Please contact the administrator.' });
-    });
-  }
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
+  });
 }
 
-// Routes
-app.use('/api', router);
+app.use('/api', authRoutes);
 
-// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack);
+  console.error('Server error:', {
+    message: err.message,
+    stack: err.stack,
+  });
   res.status(500).json({ message: 'Erreur interne du serveur.' });
 });
-
-// Test database connection on startup
-const pool = require('./db');
-async function testDatabaseConnection() {
-  try {
-    const connection = await pool.getConnection();
-    console.log('Database connection successful!');
-    connection.release();
-  } catch (error) {
-    console.error('Database connection error:', {
-      message: error.message,
-      code: error.code,
-      errno: error.errno,
-      sqlMessage: error.sqlMessage || 'N/A',
-    });
-  }
-}
-testDatabaseConnection();
-
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Serveur démarré sur le port ${PORT}`);
-  console.log(`Listening explicitly on port ${PORT} to avoid auto-detection issues`);
+  console.log(`Server started on port ${PORT}`);
 });

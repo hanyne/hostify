@@ -1,4 +1,3 @@
-// frontend/src/components/Login.jsx
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -12,16 +11,17 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submitted:', formData);
     try {
-      const response = await axios.post(`${API_URL}/auth/login`, formData); // Changed to /auth/login
+      console.log('Submitting login request:', formData);
+      const response = await axios.post('http://localhost:5000/api/login', formData);
+      console.log('Login response:', response.data);
       setMessage(response.data.message);
       localStorage.setItem('user', JSON.stringify(response.data.user));
       if (response.data.user.role === 'admin') {
@@ -30,7 +30,7 @@ const Login = () => {
         navigate('/home');
       }
     } catch (error) {
-      console.error('Login error:', error.response || error);
+      console.error('Login error:', error.response?.data || error.message);
       setMessage(error.response?.data?.message || 'Erreur lors de la connexion.');
     }
   };
