@@ -63,13 +63,15 @@ const authController = {
       }
 
       console.log('Generating JWT for user:', user.id);
-      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
       console.log('Login successful, token generated:', token);
 
-      res.status(200).json({ 
-        message: 'Connexion réussie !', 
+      res.status(200).json({
+        message: 'Connexion réussie !',
         token,
-        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role }
+        user: { id: user.id, nom: user.nom, prenom: user.prenom, email: user.email, role: user.role },
       });
     } catch (error) {
       console.error('Erreur lors de la connexion:', {
