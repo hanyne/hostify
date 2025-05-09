@@ -22,16 +22,18 @@ if (fs.existsSync(envPath)) {
     }
     console.log('Successfully loaded .env from:', envPath);
     console.log('Parsed .env variables:', result.parsed);
+    console.log('process.env after dotenv:', process.env); // Log full process.env
   } catch (error) {
     console.error('Failed to load .env:', error.message);
     process.exit(1);
   }
 } else {
   console.log('.env file not found. Assuming environment variables are set (e.g., in Render).');
+  console.log('Current process.env:', process.env); // Log full process.env
 }
 
 // Log environment variables for debugging
-console.log('Environment Variables:', {
+console.log('Environment Variables (manual check):', {
   DB_HOST: process.env.DB_HOST || 'NOT_SET',
   DB_PORT: process.env.DB_PORT || 'NOT_SET',
   DB_USER: process.env.DB_USER || 'NOT_SET',
@@ -52,8 +54,10 @@ for (const envVar of requiredEnvVars) {
   }
 }
 
-// Initialize database pool **after** environment variables are confirmed
+// Initialize database pool after environment variables are confirmed
+console.log('Requiring db.js now...');
 const pool = require('./db');
+console.log('db.js required, pool initialized.');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
