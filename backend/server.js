@@ -22,14 +22,14 @@ if (fs.existsSync(envPath)) {
     }
     console.log('Successfully loaded .env from:', envPath);
     console.log('Parsed .env variables:', result.parsed);
-    console.log('process.env after dotenv:', process.env);
+    console.log('process.env after dotenv:', process.env); // Log full process.env
   } catch (error) {
     console.error('Failed to load .env:', error.message);
     process.exit(1);
   }
 } else {
   console.log('.env file not found. Assuming environment variables are set (e.g., in Render).');
-  console.log('Current process.env:', process.env);
+  console.log('Current process.env:', process.env); // Log full process.env
 }
 
 // Log environment variables for debugging
@@ -55,88 +55,70 @@ for (const envVar of requiredEnvVars) {
 }
 
 // Initialize database pool after environment variables are confirmed
-(async () => {
-  console.log('Requiring db.js now...');
-  const createPool = require('./db');
-  console.log('Creating pool...');
-  const pool = await createPool();
-  console.log('db.js pool initialized.');
+console.log('Requiring db.js now...');
+const pool = require('./db');
+console.log('db.js required, pool initialized.');
 
-  const app = express();
-  const PORT = process.env.PORT || 5000;
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-  app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  }));
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(fileUpload());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(fileUpload());
 
-  // Log all incoming requests with headers and body
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-    console.log('Headers:', req.headers);
-    console.log('Body:', req.body);
-    next();
-  });
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
-  app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' }));
+app.use('/sites', express.static(path.join(__dirname, 'public/sites'), { index: 'index.html' }));
 
-  app.use((req, res, next) => {
-    const host = req.headers.host;
-    console.log('Host detected:', host);
-    const [domain, port] = host.split(':');
-    const hostParts = domain.split('.');
-    const baseDomain = process.env.BASE_DOMAIN || 'localhost';
-    const baseDomainParts = baseDomain.split('.');
-    if (hostParts.length > baseDomainParts.length) {
-      const sub = hostParts[0];
-      console.log('Subdomain detected:', sub);
-      const domainName = sub;
-      console.log('Domain name:', domainName);
-      const sitePath = path.join(__dirname, 'public/sites', domainName);
-      console.log('Site path:', sitePath);
-      if (fs.existsSync(sitePath) && fs.existsSync(path.join(sitePath, 'index.html'))) {
-        return express.static(sitePath, { index: 'index.html' })(req, res, next);
-      } else {
-        return res.status(404).json({ message: `Site not found for subdomain ${sub}` });
-      }
-    }
-    next();
-  });
-
-  // Serve frontend build in production
-  if (process.env.NODE_ENV === 'production') {
-    console.log('Serving frontend build in production mode...');
-    const frontendPath = path.join(__dirname, '../frontend/build');
-    console.log('Frontend path:', frontendPath);
-    if (fs.existsSync(frontendPath)) {
-      app.use(express.static(frontendPath));
-      app.get('*', (req, res) => {
-        console.log('Serving index.html for:', req.url);
-        res.sendFile(path.join(frontendPath, 'index.html'));
-      });
+app.use((req, res, next) => {
+  const host = req.headers.host;
+  console.log('Host detected:', host);
+  const [domain, port] = host.split(':');
+  const hostParts = domain.split('.');
+  const baseDomain = process.env.BASE_DOMAIN || 'localhost';
+  const baseDomainParts = baseDomain.split('.');
+  if (hostParts.length > baseDomainParts.length) {
+    const sub = hostParts[0];
+    console.log('Subdomain detected:', sub);
+    const domainName = sub;
+    console.log('Domain name:', domainName);
+    const sitePath = path.join(__dirname, 'public/sites', domainName);
+    console.log('Site path:', sitePath);
+    if (fs.existsSync(sitePath) && fs.existsSync(path.join(sitePath, 'index.html'))) {
+      return express.static(sitePath, { index: 'index.html' })(req, res, next);
     } else {
-      console.error('Frontend build folder not found at:', frontendPath);
-      process.exit(1);
+      return res.status(404).json({ message: `Site not found for subdomain ${sub}` });
     }
   }
+  next();
+});
 
-  app.use('/api', authRoutes);
-
-  app.use((err, req, res, next) => {
-    console.error('Server error:', {
-      message: err.message,
-      stack: err.stack,
-      url: req.url,
-      method: req.method,
-      body: req.body,
-    });
-    res.status(500).json({ message: 'Erreur interne du serveur.' });
+// Serve frontend build in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/build', 'index.html'));
   });
+}
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server started on port ${PORT}`);
+app.use('/api', authRoutes);
+
+app.use((err, req, res, next) => {
+  console.error('Server error:', {
+    message: err.message,
+    stack: err.stack,
   });
-})();
+  res.status(500).json({ message: 'Erreur interne du serveur.' });
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server started on port ${PORT}`);
+});

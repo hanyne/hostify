@@ -1,6 +1,6 @@
 const mysql = require('mysql2/promise');
 
-async function createPool() {
+function createPool() {
   console.log('Database Connection Config:');
   console.log({
     host: process.env.DB_HOST || 'NOT_SET',
@@ -30,23 +30,25 @@ async function createPool() {
   });
 
   // Test pool connection
-  console.log('Testing database connection...');
-  try {
-    const connection = await pool.getConnection();
-    console.log('Database pool connection successful! Connection details:', connection.config);
-    const [rows] = await connection.query('SHOW TABLES');
-    console.log('Tables in database:', rows);
-    connection.release();
-  } catch (error) {
-    console.error('Database pool connection error:', {
-      message: error.message,
-      code: error.code,
-      errno: error.errno,
-      sqlMessage: error.sqlMessage || 'N/A',
-      stack: error.stack,
-    });
-    process.exit(1);
+  async function testPoolConnection() {
+    try {
+      const connection = await pool.getConnection();
+      console.log('Database pool connection successful! Connection details:', connection.config);
+      const [rows] = await connection.query('SHOW TABLES');
+      console.log('Tables in database:', rows);
+      connection.release();
+    } catch (error) {
+      console.error('Database pool connection error:', {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        sqlMessage: error.sqlMessage || 'N/A',
+        stack: error.stack,
+      });
+      process.exit(1);
+    }
   }
+  testPoolConnection();
 
   return pool;
 }

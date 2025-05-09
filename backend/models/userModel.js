@@ -1,74 +1,90 @@
-// server/models/userModel.js
 const pool = require('../db');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt'); // Ensure bcrypt is imported for password hashing
 
-class User {
-  static async findByEmail(email) {
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-    return rows[0];
-  }
+const User = {
+  findByEmail: async (email) => {
+    try {
+      console.log('Executing query for email:', email);
+      const [rows] = await pool.query('SELECT * FROM utilisateurs WHERE email = ?', [email]);
+      console.log('Query result:', rows);
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      console.error('Database query error:', {
+        message: error.message,
+        code: error.code,
+        errno: error.errno,
+        sqlMessage: error.sqlMessage || 'N/A',
+        stack: error.stack,
+      });
+      throw error;
+    }
+  },
 
-  static async findById(id) {
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
-    return rows[0];
-  }
+  createUser: async (nom, prenom, email, mot_de_passe, role) => {
+    try {
+      const hashedPassword = await bcrypt.hash(mot_de_passe, 10);
+      await pool.query(
+        'INSERT INTO utilisateurs (nom, prenom, email, mot_de_passe, role) VALUES (?, ?, ?, ?, ?)',
+        [nom, prenom, email, hashedPassword, role]
+      );
+    } catch (error) {
+      console.error('Create user error:', error);
+      throw error;
+    }
+  },
 
- // server/models/userModel.js
-static async findAllClients() {
-  const [rows] = await pool.query(
-      'SELECT id, nom, prenom, email, role FROM users WHERE role = "client"'
-  ); // Supprimer le ? et passer la valeur directement
-  return rows;
-}
+  createResetToken: async (email, token, expires_at) => {
+    try {
+      await pool.query(
+        'INSERT INTO reset_tokens (email, token, expires_at) VALUES (?, ?, ?)',
+        [email, token, expires_at]
+      );
+    } catch (error) {
+      console.error('Create reset token error:', error);
+      throw error;
+    }
+  },
 
-  static async createUser(nom, prenom, email, mot_de_passe, role = 'client') {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(mot_de_passe, salt);
-    await pool.query(
-      'INSERT INTO users (nom, prenom, email, mot_de_passe, role) VALUES (?, ?, ?, ?, ?)',
-      [nom, prenom, email, hashedPassword, role]
-    );
-  }
+  findResetToken: async (token) => {
+    try {
+      const [rows] = await pool.query('SELECT * FROM reset_tokens WHERE token = ? LIMIT 1', [token]);
+      return rows.length > 0 ? rows[0] : null;
+    } catch (error) {
+      console.error('Find reset token error:', error);
+      throw error;
+    }
+  },
 
-  static async updateClient(id, nom, prenom, email, role) {
-    await pool.query(
-      'UPDATE users SET nom = ?, prenom = ?, email = ?, role = ? WHERE id = ?',
-      [nom, prenom, email, role, id]
-    );
-  }
+  updatePassword: async (email, mot_de_passe) => {
+    try {
+      const hashedPassword = await bcrypt.hash(mot_de_passe, 10);
+      await pool.query('UPDATE utilisateurs SET mot_de_passe = ? WHERE email = ?', [hashedPassword, email]);
+    } catch (error) {
+      console.error('Update password error:', error);
+      throw error;
+    }
+  },
 
-  static async deleteClient(id) {
-    await pool.query('DELETE FROM users WHERE id = ?', [id]);
-  }
+  deleteResetToken: async (token) => {
+    try {
+      await pool.query('DELETE FROM reset_tokens WHERE token = ?', [token]);
+    } catch (error) {
+      console.error('Delete reset token error:', error);
+      throw error;
+    }
+  },
 
-  static async createResetToken(email, token, expires) {
-    await pool.query(
-      'INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)',
-      [email, token, expires]
-    );
-  }
-
-  static async findResetToken(token) {
-    const [rows] = await pool.query('SELECT * FROM password_resets WHERE token = ?', [token]);
-    return rows[0];
-  }
-
-  static async deleteResetToken(token) {
-    await pool.query('DELETE FROM password_resets WHERE token = ?', [token]);
-  }
-
-  static async updatePassword(email, mot_de_passe) {
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(mot_de_passe, salt);
-    await pool.query('UPDATE users SET mot_de_passe = ? WHERE email = ?', [hashedPassword, email]);
-  }
-
-  static async saveContactMessage(name, email, phone, company, message) {
-    await pool.query(
-      'INSERT INTO contact_messages (name, email, phone, company, message) VALUES (?, ?, ?, ?, ?)',
-      [name, email, phone || null, company || null, message]
-    );
-  }
-}
+  saveContactMessage: async (name, email, phone, company, message) => {
+    try {
+      await pool.query(
+        'INSERT INTO contact_messages (name, email, phone, company, message) VALUES (?, ?, ?, ?, ?)',
+        [name, email, phone, company, message]
+      );
+    } catch (error) {
+      console.error('Save contact message error:', error);
+      throw error;
+    }
+  },
+};
 
 module.exports = User;
