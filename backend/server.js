@@ -6,32 +6,31 @@ const path = require('path');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
 
-// Load .env file
+// Load .env file only if it exists (for local development)
 const envPath = path.join(__dirname, '.env');
 console.log('Looking for .env at:', envPath);
 
-if (!fs.existsSync(envPath)) {
-  console.error('.env file does not exist at:', envPath);
-  process.exit(1);
-} else {
+if (fs.existsSync(envPath)) {
   console.log('.env file found at:', envPath);
   const envContent = fs.readFileSync(envPath, 'utf8');
   console.log('Content of .env file:', envContent);
-}
 
-try {
-  const result = dotenv.config({ path: envPath });
-  if (result.error) {
-    throw result.error;
+  try {
+    const result = dotenv.config({ path: envPath });
+    if (result.error) {
+      throw result.error;
+    }
+    console.log('Successfully loaded .env from:', envPath);
+    console.log('Parsed .env variables:', result.parsed);
+  } catch (error) {
+    console.error('Failed to load .env:', error.message);
+    process.exit(1);
   }
-  console.log('Successfully loaded .env from:', envPath);
-  console.log('Parsed .env variables:', result.parsed);
-} catch (error) {
-  console.error('Failed to load .env:', error.message);
-  process.exit(1);
+} else {
+  console.log('.env file not found. Assuming environment variables are set (e.g., in Render).');
 }
 
-// Log environment variables
+// Log environment variables for debugging
 console.log('Environment Variables:', {
   DB_HOST: process.env.DB_HOST || 'NOT_SET',
   DB_PORT: process.env.DB_PORT || 'NOT_SET',
@@ -44,7 +43,16 @@ console.log('Environment Variables:', {
   BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
 });
 
-// Initialize database pool **after** .env is loaded
+// Check for required environment variables
+const requiredEnvVars = ['DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME', 'PORT', 'NODE_ENV', 'JWT_SECRET', 'BASE_DOMAIN', 'FRONTEND_URL'];
+for (const envVar of requiredEnvVars) {
+  if (!process.env[envVar]) {
+    console.error(`Missing required environment variable: ${envVar}`);
+    process.exit(1);
+  }
+}
+
+// Initialize database pool **after** environment variables are confirmed
 const pool = require('./db');
 
 const app = express();
@@ -106,6 +114,7 @@ app.use((err, req, res, next) => {
   });
   res.status(500).json({ message: 'Erreur interne du serveur.' });
 });
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server started on port ${PORT}`);
 });
