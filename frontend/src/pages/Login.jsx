@@ -21,25 +21,25 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    console.log('Form submitted:', formData);
-    try {
-      console.log('Submitting login request to:', `${API_URL}/login`, formData);
-      const response = await axios.post(`${API_URL}/login`, formData);
-      console.log('Login response:', response.data);
-      setMessage(response.data.message);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
-      if (response.data.user.role === 'admin') {
-        navigate('/dashboard');
-      } else {
-        navigate('/home');
-      }
-    } catch (error) {
-      console.error('Login error:', error.response?.data || error.message);
-      setMessage(error.response?.data?.message || 'Erreur lors de la connexion.');
+  e.preventDefault();
+  console.log('Form submitted:', formData);
+  try {
+    console.log('Submitting login request to:', `${API_URL}/login`, formData);
+    const response = await axios.post(`${API_URL}/login`, formData);
+    console.log('Login response:', response.data);
+    setMessage(response.data.message);
+    localStorage.setItem('user', JSON.stringify(response.data.user));
+    localStorage.setItem('token', response.data.token); // Ajouter cette ligne pour stocker le token
+    if (response.data.user.role === 'admin') {
+      navigate('/dashboard');
+    } else {
+      navigate('/home');
     }
-  };
-
+  } catch (error) {
+    console.error('Login error:', error.response?.data || error.message);
+    setMessage(error.response?.data?.message || 'Erreur lors de la connexion.');
+  }
+};
   return (
     <>
       <div className="preloader">

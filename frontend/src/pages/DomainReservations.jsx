@@ -89,24 +89,46 @@ const AdminDomainReservations = () => {
 // client/src/pages/AdminDomainReservations.jsx
 const handlePaymentStatusChange = async (id, newStatus) => {
   try {
-    // Requête sans en-tête Authorization
-    await axios.put(
-      `http://localhost:5000/api/reservations/${id}/payment`,
-      { payment_status: newStatus }
-    );
     const token = localStorage.getItem('token');
-    const response = await axios.get('http://localhost:5000/api/reservations', {
+    console.log('Token utilisé pour la requête:', token);
+    if (!token) {
+      toast.error('Aucun token trouvé. Veuillez vous reconnecter.');
+      window.location.href = '/login';
+      return;
+    }
+
+    console.log('Envoi de la requête PUT:', {
+      url: `http://localhost:5000/api/reservations/${id}/payment`,
+      data: { payment_status: newStatus },
       headers: { Authorization: `Bearer ${token}` },
     });
-    setReservations(response.data);
+
+    const response = await axios.put(
+      `http://localhost:5000/api/reservations/${id}/payment`,
+      { payment_status: newStatus },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    console.log('Réponse de la requête PUT:', response.data);
+
+    const reservationsResponse = await axios.get('http://localhost:5000/api/reservations', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setReservations(reservationsResponse.data);
     setError(null);
     toast.success('Statut de paiement mis à jour !');
     if (newStatus === 'paid') {
       toast.success('Notification envoyée au client !');
     }
   } catch (error) {
-    setError(error.response?.data?.message || 'Erreur lors de la mise à jour du statut de paiement.');
-    toast.error('Erreur lors de la mise à jour du statut de paiement.');
+    console.error('Erreur complète:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status,
+      headers: error.response?.headers,
+    });
+    const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour du statut de paiement.';
+    setError(errorMessage);
+    toast.error(errorMessage);
   }
 };
   const handleEditReservation = async (e) => {
