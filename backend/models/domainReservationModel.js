@@ -1,20 +1,51 @@
-// server/models/domainReservationModel.js
 const pool = require('../db');
-const path = require('path');
-const fs = require('fs');
 
 class DomainReservation {
-  static async create(userId, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
+  static async checkDomainAvailability(domainName) {
+    const [rows] = await pool.query(
+      'SELECT id FROM domain_reservations WHERE domain_name = ? AND status != "rejected"',
+      [domainName]
+    );
+    return rows.length === 0;
+  }
+
+  static async create(
+    userId,
+    domainName,
+    offerId,
+    hostingOfferId,
+    technologies,
+    projectType,
+    hostingNeeded,
+    additionalServices,
+    preferredContactMethod,
+    projectDeadline,
+    budgetRange,
+    paymentStatus = 'unpaid'
+  ) {
     const [result] = await pool.query(
-      'INSERT INTO domain_reservations (user_id, domain_name, offer_id, hosting_offer_id, technologies, project_type, hosting_needed, additional_services, preferred_contact_method, project_deadline, budget_range, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [userId || null, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, 'pending']
+      'INSERT INTO domain_reservations (user_id, domain_name, offer_id, hosting_offer_id, technologies, project_type, hosting_needed, additional_services, preferred_contact_method, project_deadline, budget_range, payment_status, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending", NOW())',
+      [
+        userId,
+        domainName,
+        offerId,
+        hostingOfferId,
+        technologies,
+        projectType,
+        hostingNeeded,
+        additionalServices,
+        preferredContactMethod,
+        projectDeadline,
+        budgetRange,
+        paymentStatus,
+      ]
     );
     return result.insertId;
   }
 
   static async findById(id) {
     const [rows] = await pool.query(
-      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price, u.nom, u.prenom, u.email FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id LEFT JOIN users u ON dr.user_id = u.id WHERE dr.id = ?',
+      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price, u.nom, u.prenom, u.email, u.phone AS client_phone FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id LEFT JOIN users u ON dr.user_id = u.id WHERE dr.id = ?',
       [id]
     );
     return rows[0];
@@ -30,32 +61,56 @@ class DomainReservation {
 
   static async findAll() {
     const [rows] = await pool.query(
-      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price, u.nom, u.prenom, u.email FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id LEFT JOIN users u ON dr.user_id = u.id'
+      'SELECT dr.*, o.name AS offer_name, o.duration_months, o.price, o.description, o.features, o.domain_type, ho.name AS hosting_offer_name, ho.storage_space, ho.bandwidth, ho.price AS hosting_price, u.nom, u.prenom, u.email, u.phone AS client_phone FROM domain_reservations dr JOIN offers o ON dr.offer_id = o.id LEFT JOIN offers ho ON dr.hosting_offer_id = ho.id LEFT JOIN users u ON dr.user_id = u.id'
     );
     return rows;
   }
 
-  static async update(id, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange) {
+  static async update(
+    id,
+    domainName,
+    offerId,
+    hostingOfferId,
+    technologies,
+    projectType,
+    hostingNeeded,
+    additionalServices,
+    preferredContactMethod,
+    projectDeadline,
+    budgetRange,
+    paymentStatus
+  ) {
     await pool.query(
-      'UPDATE domain_reservations SET domain_name = ?, offer_id = ?, hosting_offer_id = ?, technologies = ?, project_type = ?, hosting_needed = ?, additional_services = ?, preferred_contact_method = ?, project_deadline = ?, budget_range = ?, updated_at = NOW() WHERE id = ? AND status = ?',
-      [domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, id, 'pending']
+      'UPDATE domain_reservations SET domain_name = ?, offer_id = ?, hosting_offer_id = ?, technologies = ?, project_type = ?, hosting_needed = ?, additional_services = ?, preferred_contact_method = ?, project_deadline = ?, budget_range = ?, payment_status = ?, updated_at = NOW() WHERE id = ?',
+      [
+        domainName,
+        offerId,
+        hostingOfferId,
+        technologies,
+        projectType,
+        hostingNeeded,
+        additionalServices,
+        preferredContactMethod,
+        projectDeadline,
+        budgetRange,
+        paymentStatus,
+        id,
+      ]
     );
   }
 
-  static async delete(id) {
-    const reservation = await this.findById(id);
-    if (reservation && reservation.status === 'pending') {
-      await pool.query('DELETE FROM domain_reservations WHERE id = ? AND status = ?', [id, 'pending']);
-      // Supprimer les fichiers déployés si nécessaire
-      const publicDir = path.join(__dirname, '../public/sites', reservation.domain_name);
-      if (fs.existsSync(publicDir)) {
-        fs.rmSync(publicDir, { recursive: true, force: true });
-      }
-    }
+  static async updateStatus(id, status) {
+    await pool.query(
+      'UPDATE domain_reservations SET status = ?, updated_at = NOW() WHERE id = ?',
+      [status, id]
+    );
   }
 
-  static async updateStatus(id, status) {
-    await pool.query('UPDATE domain_reservations SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
+  static async updatePaymentStatus(id, paymentStatus) {
+    await pool.query(
+      'UPDATE domain_reservations SET payment_status = ?, updated_at = NOW() WHERE id = ?',
+      [paymentStatus, id]
+    );
   }
 
   static async updateDeployedUrl(id, deployedUrl) {
@@ -65,12 +120,8 @@ class DomainReservation {
     );
   }
 
-  static async checkDomainAvailability(domainName) {
-    const [rows] = await pool.query(
-      'SELECT * FROM domain_reservations WHERE domain_name = ? AND status = ?',
-      [domainName, 'accepted']
-    );
-    return rows.length === 0;
+  static async delete(id) {
+    await pool.query('DELETE FROM domain_reservations WHERE id = ?', [id]);
   }
 }
 

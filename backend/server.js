@@ -1,100 +1,55 @@
+// server.js
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
+const domainRoutes = require('./routes/domainRoutes'); // Add new routes
 const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 const fileUpload = require('express-fileupload');
+const mysql = require('mysql2/promise');
 
-// Load .env file only if it exists (for local development)
 const envPath = path.join(__dirname, '.env');
-console.log('Looking for .env at:', envPath);
-
-if (fs.existsSync(envPath)) {
-  console.log('.env file found at:', envPath);
-  const envContent = fs.readFileSync(envPath, 'utf8');
-  console.log('Content of .env file:', envContent);
-
-  try {
-    const result = dotenv.config({ path: envPath });
-    if (result.error) {
-      throw result.error;
-    }
-    console.log('Successfully loaded .env from:', envPath);
-    console.log('Parsed .env variables:', result.parsed);
-    console.log('process.env after dotenv:', {
-      DB_HOST: process.env.DB_HOST || 'NOT_SET',
-      DB_PORT: process.env.DB_PORT || 'NOT_SET',
-      DB_USER: process.env.DB_USER || 'NOT_SET',
-      DB_PASSWORD: process.env.DB_PASSWORD ? '[REDACTED]' : 'NOT_SET',
-      DB_NAME: process.env.DB_NAME || 'NOT_SET',
-      NODE_ENV: process.env.NODE_ENV || 'NOT_SET',
-      PORT: process.env.PORT || 'NOT_SET',
-      FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
-      BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
-      JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET',
-      EMAIL_HOST: process.env.EMAIL_HOST || 'NOT_SET',
-      EMAIL_PORT: process.env.EMAIL_PORT || 'NOT_SET',
-      EMAIL_USER: process.env.EMAIL_USER || 'NOT_SET',
-      EMAIL_PASS: process.env.EMAIL_PASS ? '[REDACTED]' : 'NOT_SET',
-    });
-  } catch (error) {
-    console.error('Failed to load .env:', error.message);
-    process.exit(1);
+try {
+  const result = dotenv.config({ path: envPath });
+  if (result.error) {
+    throw result.error;
   }
-} else {
-  console.log('.env file not found. Assuming environment variables are set (e.g., in Render).');
-  console.log('Current process.env:', {
-    DB_HOST: process.env.DB_HOST || 'NOT_SET',
-    DB_PORT: process.env.DB_PORT || 'NOT_SET',
-    DB_USER: process.env.DB_USER || 'NOT_SET',
-    DB_PASSWORD: process.env.DB_PASSWORD ? '[REDACTED]' : 'NOT_SET',
-    DB_NAME: process.env.DB_NAME || 'NOT_SET',
-    NODE_ENV: process.env.NODE_ENV || 'NOT_SET',
-    PORT: process.env.PORT || 'NOT_SET',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
-    BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
-    JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET',
-    EMAIL_HOST: process.env.EMAIL_HOST || 'NOT_SET',
-    EMAIL_PORT: process.env.EMAIL_PORT || 'NOT_SET',
-    EMAIL_USER: process.env.EMAIL_USER || 'NOT_SET',
-    EMAIL_PASS: process.env.EMAIL_PASS ? '[REDACTED]' : 'NOT_SET',
-  });
+  console.log('Successfully loaded .env from:', envPath);
+} catch (error) {
+  console.error('Failed to load .env:', error.message);
+  process.exit(1);
 }
 
-// Check for required environment variables
-const requiredEnvVars = [
-  'DB_HOST',
-  'DB_PORT',
-  'DB_USER',
-  'DB_PASSWORD',
-  'DB_NAME',
-  'PORT',
-  'NODE_ENV',
-  'JWT_SECRET',
-  'BASE_DOMAIN',
-  'FRONTEND_URL',
-];
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    console.error(`Missing required environment variable: ${envVar}`);
-    process.exit(1);
-  }
-}
-
-// Initialize database pool
-console.log('Requiring db.js now...');
-const pool = require('./db');
+console.log('Environment Variables:', {
+  DB_HOST: process.env.DB_HOST || 'NOT_SET',
+  DB_PORT: process.env.DB_PORT || 'NOT_SET',
+  DB_USER: process.env.DB_USER || 'NOT_SET',
+  DB_PASSWORD: process.env.DB_PASSWORD ? '[REDACTED]' : 'NOT_SET',
+  DB_NAME: process.env.DB_NAME || 'NOT_SET',
+  NODE_ENV: process.env.NODE_ENV || 'NOT_SET',
+  PORT: process.env.PORT || 'NOT_SET',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'NOT_SET',
+  BASE_DOMAIN: process.env.BASE_DOMAIN || 'NOT_SET',
+  JWT_SECRET: process.env.JWT_SECRET ? '[REDACTED]' : 'NOT_SET',
+});
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  })
-);
+// Database Connection
+const pool = mysql.createPool({
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+});
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload());
@@ -102,8 +57,6 @@ app.use(fileUpload());
 // Log all incoming requests
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
   next();
 });
 
@@ -132,36 +85,18 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve frontend build in production
-if (process.env.NODE_ENV === 'production') {
-  console.log('Serving frontend build in production mode...');
-  const frontendPath = path.join(__dirname, '../frontend/build');
-  console.log('Frontend path:', frontendPath);
-  if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
-    app.get('*', (req, res) => {
-      console.log('Serving index.html for:', req.url);
-      res.sendFile(path.join(frontendPath, 'index.html'));
-    });
-  } else {
-    console.error('Frontend build folder not found at:', frontendPath);
-    process.exit(1);
-  }
-}
-
+// Mount routes
 app.use('/api', authRoutes);
+app.use('/api', domainRoutes); // Add domain routes
 
 app.use((err, req, res, next) => {
   console.error('Server error:', {
     message: err.message,
     stack: err.stack,
-    url: req.url,
-    method: req.method,
-    body: req.body,
   });
   res.status(500).json({ message: 'Erreur interne du serveur.' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, 'localhost', () => {
   console.log(`Server started on port ${PORT}`);
 });

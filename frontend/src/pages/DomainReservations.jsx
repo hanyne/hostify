@@ -1,97 +1,118 @@
-// client/src/DomainReservations.jsx
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaEdit, FaTrash, FaUpload, FaFileAlt, FaEye } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSearch, FaFilter } from 'react-icons/fa';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import Modal from 'react-modal';
+import { toast } from 'react-hot-toast';
 
-const DomainReservations = () => {
+Modal.setAppElement('#root');
+
+const AdminDomainReservations = () => {
   const [reservations, setReservations] = useState([]);
   const [domainOffers, setDomainOffers] = useState([]);
   const [hostingOffers, setHostingOffers] = useState([]);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [showEditForm, setShowEditForm] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [error, setError] = useState(null);
-  const [userId] = useState(1); // Remplacez par l'ID de l'utilisateur connecté (à récupérer via auth)
-  const [projectFiles, setProjectFiles] = useState({}); // Stocker les fichiers par réservation
-  const [showUploadForm, setShowUploadForm] = useState(null); // ID de la réservation pour laquelle uploader des fichiers
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const reservationsPerPage = 6;
 
-  // Récupérer les réservations de l'utilisateur
   useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
-        setReservations(response.data);
-        setError(null);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des réservations:', error.response ? error.response.data : error.message);
-        setError('Erreur lors du chargement des réservations.');
+  const fetchReservations = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        window.location.href = '/login';
+        return;
       }
-    };
-    fetchReservations();
-  }, [userId]);
+      const response = await axios.get('http://localhost:5000/api/reservations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setReservations(response.data);
+      setError(null);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expirée. Veuillez vous reconnecter.');
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      } else {
+        setError(error.response?.data?.error || 'Erreur lors du chargement des réservations.');
+        toast.error('Erreur lors du chargement des réservations.');
+      }
+    }
+  };
+  fetchReservations();
+}, []);
 
-  // Récupérer les offres de domaine et d'hébergement
   useEffect(() => {
     const fetchOffers = async () => {
       try {
-        const domainResponse = await axios.get('http://localhost:5000/api/offers?type=domain');
+        const token = localStorage.getItem('token');
+        const domainResponse = await axios.get('http://localhost:5000/api/offers?type=domain', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setDomainOffers(domainResponse.data);
-        const hostingResponse = await axios.get('http://localhost:5000/api/offers?type=hosting');
+        const hostingResponse = await axios.get('http://localhost:5000/api/offers?type=hosting', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setHostingOffers(hostingResponse.data);
         setError(null);
       } catch (error) {
-        console.error('Erreur lors de la récupération des offres:', error.response ? error.response.data : error.message);
-        setError('Erreur lors du chargement des offres: ' + (error.response?.data?.message || error.message));
+        setError(error.response?.data?.error || 'Erreur lors du chargement des offres.');
       }
     };
     fetchOffers();
   }, []);
 
-  // Récupérer les fichiers pour une réservation spécifique
-  const fetchProjectFiles = async (reservationId) => {
+  const handleUpdateStatus = async (id, status) => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/project-files/${reservationId}`);
-      setProjectFiles((prev) => ({ ...prev, [reservationId]: response.data }));
-    } catch (error) {
-      console.error('Erreur lors de la récupération des fichiers:', error.response ? error.response.data : error.message);
-      setError('Erreur lors du chargement des fichiers.');
-    }
-  };
-
-  // Ajouter une réservation
-  const handleAddReservation = async (e) => {
-    e.preventDefault();
-    const formData = {
-      userId,
-      domainName: e.target.domainName.value,
-      offerId: parseInt(e.target.offerId.value),
-      hostingOfferId: e.target.hostingOfferId.value ? parseInt(e.target.hostingOfferId.value) : null,
-      technologies: e.target.technologies.value,
-      projectType: e.target.projectType.value,
-      hostingNeeded: e.target.hostingNeeded.checked ? 1 : 0,
-      additionalServices: e.target.additionalServices.value,
-      preferredContactMethod: e.target.preferredContactMethod.value,
-      projectDeadline: e.target.projectDeadline.value,
-      budgetRange: e.target.budgetRange.value,
-    };
-    try {
-      await axios.post('http://localhost:5000/api/reservations', formData);
-      setShowAddForm(false);
-      const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `http://localhost:5000/api/reservations/${id}/status`,
+        { status },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const response = await axios.get('http://localhost:5000/api/reservations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setReservations(response.data);
       setError(null);
+      toast.success(`Réservation ${status === 'accepted' ? 'acceptée' : 'refusée'} avec succès !`);
     } catch (error) {
-      console.error('Erreur lors de l\'ajout de la réservation:', error.response ? error.response.data : error.message);
-      setError(error.response?.data?.message || 'Erreur lors de l\'ajout de la réservation.');
+      setError(error.response?.data?.error || 'Erreur lors de la mise à jour du statut.');
+      toast.error('Erreur lors de la mise à jour du statut.');
     }
   };
 
-  // Modifier une réservation
+// client/src/pages/AdminDomainReservations.jsx
+const handlePaymentStatusChange = async (id, newStatus) => {
+  try {
+    // Requête sans en-tête Authorization
+    await axios.put(
+      `http://localhost:5000/api/reservations/${id}/payment`,
+      { payment_status: newStatus }
+    );
+    const token = localStorage.getItem('token');
+    const response = await axios.get('http://localhost:5000/api/reservations', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setReservations(response.data);
+    setError(null);
+    toast.success('Statut de paiement mis à jour !');
+    if (newStatus === 'paid') {
+      toast.success('Notification envoyée au client !');
+    }
+  } catch (error) {
+    setError(error.response?.data?.message || 'Erreur lors de la mise à jour du statut de paiement.');
+    toast.error('Erreur lors de la mise à jour du statut de paiement.');
+  }
+};
   const handleEditReservation = async (e) => {
     e.preventDefault();
     if (!selectedReservation || !selectedReservation.id) {
-      setError('Aucune réservation sélectionnée pour la modification.');
+      setError('Aucune réservation sélectionnée.');
       return;
     }
     const formData = {
@@ -105,463 +126,501 @@ const DomainReservations = () => {
       preferredContactMethod: e.target.preferredContactMethod.value,
       projectDeadline: e.target.projectDeadline.value,
       budgetRange: e.target.budgetRange.value,
+      paymentStatus: e.target.paymentStatus.value, // Added payment status to form data
     };
     try {
-      await axios.put(`http://localhost:5000/api/reservations/${selectedReservation.id}`, formData);
-      setShowEditForm(false);
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5000/api/reservations/${selectedReservation.id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setShowEditModal(false);
       setSelectedReservation(null);
-      const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+      const response = await axios.get('http://localhost:5000/api/reservations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setReservations(response.data);
       setError(null);
+      toast.success('Réservation modifiée avec succès !');
     } catch (error) {
-      console.error('Erreur lors de la modification de la réservation:', error.response ? error.response.data : error.message);
-      setError(error.response?.data?.message || 'Erreur lors de la modification de la réservation.');
+      setError(error.response?.data?.error || 'Erreur lors de la modification.');
+      toast.error('Erreur lors de la modification.');
     }
   };
 
-  // Supprimer une réservation
   const handleDeleteReservation = async (id) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette réservation ?')) {
+    if (window.confirm('Confirmer la suppression ?')) {
       try {
-        await axios.delete(`http://localhost:5000/api/reservations/${id}`);
-        const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+        const token = localStorage.getItem('token');
+        await axios.delete(`http://localhost:5000/api/reservations/${id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const response = await axios.get('http://localhost:5000/api/reservations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setReservations(response.data);
         setError(null);
+        toast.success('Réservation supprimée avec succès !');
       } catch (error) {
-        console.error('Erreur lors de la suppression de la réservation:', error.response ? error.response.data : error.message);
-        setError(error.response?.data?.message || 'Erreur lors de la suppression de la réservation.');
+        setError(error.response?.data?.error || 'Erreur lors de la suppression.');
+        toast.error('Erreur lors de la suppression.');
       }
     }
   };
 
-  // Uploader des fichiers pour une réservation
-  const handleUploadFiles = async (e, reservationId) => {
-    e.preventDefault();
-    const files = e.target.files.files;
-    if (!files || files.length === 0) {
-      setError('Veuillez sélectionner au moins un fichier.');
-      return;
-    }
+  const filteredReservations = reservations.filter((reservation) => {
+    const matchesSearch =
+      reservation.domain_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (reservation.nom &&
+        `${reservation.nom} ${reservation.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesStatus = statusFilter ? reservation.status === statusFilter : true;
+    return matchesSearch && matchesStatus;
+  });
 
-    const formData = new FormData();
-    formData.append('reservationId', reservationId);
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
-    }
+  const indexOfLastReservation = currentPage * reservationsPerPage;
+  const indexOfFirstReservation = indexOfLastReservation - reservationsPerPage;
+  const currentReservations = filteredReservations.slice(
+    indexOfFirstReservation,
+    indexOfLastReservation
+  );
+  const totalPages = Math.ceil(filteredReservations.length / reservationsPerPage);
 
-    try {
-      await axios.post('http://localhost:5000/api/project-files', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setShowUploadForm(null);
-      fetchProjectFiles(reservationId); // Rafraîchir la liste des fichiers
-      const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
-      setReservations(response.data); // Rafraîchir la liste des réservations pour afficher la nouvelle URL déployée
-      setError(null);
-    } catch (error) {
-      console.error('Erreur lors de l\'upload des fichiers:', error.response ? error.response.data : error.message);
-      setError(error.response?.data?.message || 'Erreur lors de l\'upload des fichiers.');
-    }
-  };
-
-  // Supprimer un fichier
-  const handleDeleteFile = async (fileId, reservationId) => {
-    if (window.confirm('Êtes-vous sûr de vouloir supprimer ce fichier ?')) {
-      try {
-        console.log('Suppression du fichier avec ID:', fileId); // Log pour déboguer
-        await axios.delete(`http://localhost:5000/api/project-files/${fileId}`);
-        console.log('Fichier supprimé avec succès');
-        fetchProjectFiles(reservationId); // Rafraîchir la liste des fichiers
-        const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
-        setReservations(response.data); // Rafraîchir la liste des réservations pour afficher la nouvelle URL déployée
-        setError(null);
-      } catch (error) {
-        console.error('Erreur lors de la suppression du fichier:', error.response ? error.response.data : error.message);
-        setError(error.response?.data?.message || 'Erreur lors de la suppression du fichier.');
-      }
-    }
-  };
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
-    <div className="reservations-page">
+    <div className="admin-reservations-page">
       <header className="page-header">
-        <h1>Gestion des Réservations de Domaine</h1>
-        <Link to="/dashboard" className="back-to-dashboard">
+        <h1>Gestion des Réservations</h1>
+        <Link to="/dashboard" className="back-btn">
           Retour au Dashboard
         </Link>
       </header>
 
       {error && <div className="error-message">{error}</div>}
-      <div className="reservations-section">
-        <h2>Liste des Réservations</h2>
-        <button className="add-reservation-btn" onClick={() => setShowAddForm(true)}>
-          <FaPlus /> Ajouter une réservation
-        </button>
-        <div className="reservation-list">
-          {reservations.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom de Domaine</th>
-                  <th>Offre de Domaine</th>
-                  <th>Offre d'Hébergement</th>
-                  <th>Technologies</th>
-                  <th>Type de Projet</th>
-                  <th>Statut</th>
-                  <th>URL Déployée</th>
-                  <th>Actions</th>
-                  <th>Fichiers</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reservations.map((reservation) => (
-                  <tr key={reservation.id}>
-                    <td>{reservation.domain_name}</td>
-                    <td>{reservation.offer_name}</td>
-                    <td>{reservation.hosting_offer_name || 'N/A'}</td>
-                    <td>{reservation.technologies}</td>
-                    <td>{reservation.project_type}</td>
-                    <td>{reservation.status}</td>
-                    <td>
-                      {reservation.deployed_url ? (
-                        <a href={reservation.deployed_url} target="_blank" rel="noopener noreferrer">
-                          <FaEye /> Voir le site
-                        </a>
-                      ) : (
-                        'Non déployé'
-                      )}
-                    </td>
-                    <td>
+
+      <section className="reservations-section">
+        <div className="controls">
+          <div className="search-bar">
+            <FaSearch />
+            <input
+              type="text"
+              placeholder="Rechercher par domaine ou client..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="filter">
+            <FaFilter />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">Tous les statuts</option>
+              <option value="pending">En attente</option>
+              <option value="accepted">Accepté</option>
+              <option value="rejected">Refusé</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="reservation-grid">
+          {currentReservations.length > 0 ? (
+            currentReservations.map((reservation) => (
+              <div key={reservation.id} className="reservation-card">
+                <h3>{reservation.domain_name}</h3>
+                <p>
+                  <strong>Client:</strong>{' '}
+                  {reservation.nom ? `${reservation.nom} ${reservation.prenom}` : 'N/A'}
+                </p>
+                <p>
+                  <strong>Offre:</strong> {reservation.offer_name}
+                </p>
+                <p>
+                  <strong>Technologies:</strong> {reservation.technologies}
+                </p>
+                <p>
+                  <strong>Type:</strong> {reservation.project_type}
+                </p>
+                <p>
+                  <strong>Hébergement:</strong> {reservation.hosting_needed ? 'Oui' : 'Non'}
+                </p>
+                <p>
+                  <strong>Statut:</strong> {reservation.status}
+                </p>
+                <p>
+                  <strong>Paiement:</strong>{' '}
+                  <select
+                    value={reservation.payment_status || 'unpaid'}
+                    onChange={(e) => handlePaymentStatusChange(reservation.id, e.target.value)}
+                    className={reservation.payment_status === 'paid' ? 'status-paid' : 'status-unpaid'}
+                  >
+                    <option value="unpaid">Non Payé</option>
+                    <option value="paid">Payé</option>
+                  </select>
+                </p>
+                <div className="card-actions">
+                  {reservation.status === 'pending' && (
+                    <>
                       <button
-                        className="edit-btn"
-                        onClick={() => {
-                          setSelectedReservation(reservation);
-                          setShowEditForm(true);
-                        }}
-                        disabled={reservation.status !== 'pending'}
+                        className="accept-btn"
+                        onClick={() => handleUpdateStatus(reservation.id, 'accepted')}
                       >
-                        <FaEdit /> Modifier
+                        Accepter
                       </button>
                       <button
-                        className="delete-btn"
-                        onClick={() => handleDeleteReservation(reservation.id)}
-                        disabled={reservation.status !== 'pending'}
+                        className="reject-btn"
+                        onClick={() => handleUpdateStatus(reservation.id, 'rejected')}
                       >
-                        <FaTrash /> Supprimer
+                        Refuser
                       </button>
-                    </td>
-                    <td>
-                      {reservation.status === 'accepted' && (
-                        <>
-                          <button
-                            className="upload-btn"
-                            onClick={() => {
-                              setShowUploadForm(reservation.id);
-                              fetchProjectFiles(reservation.id); // Charger les fichiers existants
-                            }}
-                          >
-                            <FaUpload /> Uploader des fichiers
-                          </button>
-                          {projectFiles[reservation.id]?.length > 0 && (
-                            <div className="file-list">
-                              <h4>Fichiers uploadés :</h4>
-                              <ul>
-                                {projectFiles[reservation.id].map((file) => (
-                                  <li key={file.id}>
-                                    {file.file_name}{' '}
-                                    <button
-                                      className="delete-file-btn"
-                                      onClick={() => handleDeleteFile(file.id, reservation.id)}
-                                    >
-                                      <FaTrash /> Supprimer
-                                    </button>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  )}
+                  <button
+                    className="edit-btn"
+                    onClick={() => {
+                      setSelectedReservation(reservation);
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <FaEdit /> Modifier
+                  </button>
+                  <button
+                    className="delete-btn"
+                    onClick={() => handleDeleteReservation(reservation.id)}
+                  >
+                    <FaTrash /> Supprimer
+                  </button>
+                </div>
+              </div>
+            ))
           ) : (
             <p>Aucune réservation trouvée.</p>
           )}
         </div>
-      </div>
 
-      {/* Formulaire d'ajout */}
-      {showAddForm && (
-        <div className="add-reservation-form">
-          <h2>Ajouter une réservation</h2>
-          <form onSubmit={handleAddReservation}>
-            <div className="form-group">
-              <label>Nom de Domaine :</label>
-              <input type="text" name="domainName" required />
-            </div>
-            <div className="form-group">
-              <label>Offre de Domaine :</label>
-              <select name="offerId" required>
-                <option value="">Sélectionner une offre</option>
-                {domainOffers.length > 0 ? (
-                  domainOffers.map((offer) => (
-                    <option key={offer.id} value={offer.id}>
-                      {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>Aucune offre de domaine disponible</option>
-                )}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Offre d'Hébergement (optionnel) :</label>
-              <select name="hostingOfferId">
-                <option value="">Aucune</option>
-                {hostingOffers.length > 0 ? (
-                  hostingOffers.map((offer) => (
-                    <option key={offer.id} value={offer.id}>
-                      {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>Aucune offre d'hébergement disponible</option>
-                )}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Technologies (séparées par des virgules) :</label>
-              <input type="text" name="technologies" required placeholder="HTML, CSS, React" />
-            </div>
-            <div className="form-group">
-              <label>Type de Projet :</label>
-              <select name="projectType" required>
-                <option value="portfolio">Portfolio</option>
-                <option value="ecommerce">E-commerce</option>
-                <option value="blog">Blog</option>
-                <option value="business">Business</option>
-                <option value="other">Autre</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Besoin d'Hébergement :</label>
-              <input type="checkbox" name="hostingNeeded" />
-            </div>
-            <div className="form-group">
-              <label>Services Additionnels (optionnel) :</label>
-              <input type="text" name="additionalServices" placeholder="SEO, Maintenance" />
-            </div>
-            <div className="form-group">
-              <label>Méthode de Contact Préférée :</label>
-              <select name="preferredContactMethod">
-                <option value="email">Email</option>
-                <option value="phone">Téléphone</option>
-                <option value="both">Les deux</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Date Limite du Projet (optionnel) :</label>
-              <input type="date" name="projectDeadline" />
-            </div>
-            <div className="form-group">
-              <label>Plage de Budget :</label>
-              <select name="budgetRange">
-                <option value="0-100">0-100€</option>
-                <option value="100-500">100-500€</option>
-                <option value="500-1000">500-1000€</option>
-                <option value="1000+">1000€ et plus</option>
-              </select>
-            </div>
-            <button type="submit">Ajouter</button>
-            <button type="button" onClick={() => setShowAddForm(false)}>Annuler</button>
-          </form>
-        </div>
-      )}
+        {totalPages > 1 && (
+          <div className="pagination">
+            {Array.from({ length: totalPages }, (_, i) => (
+              <button
+                key={i + 1}
+                onClick={() => paginate(i + 1)}
+                className={currentPage === i + 1 ? 'active' : ''}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
-      {/* Formulaire de modification */}
-      {showEditForm && selectedReservation && (
-        <div className="add-reservation-form">
-          <h2>Modifier la réservation</h2>
-          <form onSubmit={handleEditReservation}>
-            <div className="form-group">
-              <label>Nom de Domaine :</label>
-              <input type="text" name="domainName" defaultValue={selectedReservation.domain_name} required />
-            </div>
-            <div className="form-group">
-              <label>Offre de Domaine :</label>
-              <select name="offerId" defaultValue={selectedReservation.offer_id} required>
-                <option value="">Sélectionner une offre</option>
-                {domainOffers.length > 0 ? (
-                  domainOffers.map((offer) => (
-                    <option key={offer.id} value={offer.id}>
-                      {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>Aucune offre de domaine disponible</option>
-                )}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Offre d'Hébergement (optionnel) :</label>
-              <select name="hostingOfferId" defaultValue={selectedReservation.hosting_offer_id || ''}>
-                <option value="">Aucune</option>
-                {hostingOffers.length > 0 ? (
-                  hostingOffers.map((offer) => (
-                    <option key={offer.id} value={offer.id}>
-                      {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>Aucune offre d'hébergement disponible</option>
-                )}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Technologies (séparées par des virgules) :</label>
-              <input type="text" name="technologies" defaultValue={selectedReservation.technologies} required />
-            </div>
-            <div className="form-group">
-              <label>Type de Projet :</label>
-              <select name="projectType" defaultValue={selectedReservation.project_type} required>
-                <option value="portfolio">Portfolio</option>
-                <option value="ecommerce">E-commerce</option>
-                <option value="blog">Blog</option>
-                <option value="business">Business</option>
-                <option value="other">Autre</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Besoin d'Hébergement :</label>
-              <input type="checkbox" name="hostingNeeded" defaultChecked={selectedReservation.hosting_needed} />
-            </div>
-            <div className="form-group">
-              <label>Services Additionnels (optionnel) :</label>
-              <input type="text" name="additionalServices" defaultValue={selectedReservation.additional_services} />
-            </div>
-            <div className="form-group">
-              <label>Méthode de Contact Préférée :</label>
-              <select name="preferredContactMethod" defaultValue={selectedReservation.preferred_contact_method}>
-                <option value="email">Email</option>
-                <option value="phone">Téléphone</option>
-                <option value="both">Les deux</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label>Date Limite du Projet (optionnel) :</label>
-              <input type="date" name="projectDeadline" defaultValue={selectedReservation.project_deadline} />
-            </div>
-            <div className="form-group">
-              <label>Plage de Budget :</label>
-              <select name="budgetRange" defaultValue={selectedReservation.budget_range}>
-                <option value="0-100">0-100€</option>
-                <option value="100-500">100-500€</option>
-                <option value="500-1000">500-1000€</option>
-                <option value="1000+">1000€ et plus</option>
-              </select>
-            </div>
+      <Modal
+        isOpen={showEditModal}
+        onRequestClose={() => setShowEditModal(false)}
+        className="modal"
+        overlayClassName="modal-overlay"
+      >
+        <h2>Modifier Réservation</h2>
+        <form onSubmit={handleEditReservation} className="edit-form">
+          <div className="form-group">
+            <label>Nom de Domaine</label>
+            <input
+              type="text"
+              name="domainName"
+              defaultValue={selectedReservation?.domain_name}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Offre de Domaine</label>
+            <select name="offerId" defaultValue={selectedReservation?.offer_id} required>
+              <option value="">Choisir</option>
+              {domainOffers.map((offer) => (
+                <option key={offer.id} value={offer.id}>
+                  {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Offre d'Hébergement</label>
+            <select
+              name="hostingOfferId"
+              defaultValue={selectedReservation?.hosting_offer_id || ''}
+            >
+              <option value="">Aucune</option>
+              {hostingOffers.map((offer) => (
+                <option key={offer.id} value={offer.id}>
+                  {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Technologies</label>
+            <input
+              type="text"
+              name="technologies"
+              defaultValue={selectedReservation?.technologies}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label>Type de Projet</label>
+            <select
+              name="projectType"
+              defaultValue={selectedReservation?.project_type}
+              required
+            >
+              <option value="portfolio">Portfolio</option>
+              <option value="ecommerce">E-commerce</option>
+              <option value="blog">Blog</option>
+              <option value="business">Business</option>
+              <option value="other">Autre</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Besoin d'Hébergement</label>
+            <input
+              type="checkbox"
+              name="hostingNeeded"
+              defaultChecked={selectedReservation?.hosting_needed}
+            />
+          </div>
+          <div className="form-group">
+            <label>Services Additionnels</label>
+            <input
+              type="text"
+              name="additionalServices"
+              defaultValue={selectedReservation?.additional_services}
+            />
+          </div>
+          <div className="form-group">
+            <label>Contact Préféré</label>
+            <select
+              name="preferredContactMethod"
+              defaultValue={selectedReservation?.preferred_contact_method}
+            >
+              <option value="email">Email</option>
+              <option value="phone">Téléphone</option>
+              <option value="both">Les deux</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Date Limite</label>
+            <input
+              type="date"
+              name="projectDeadline"
+              defaultValue={selectedReservation?.project_deadline}
+            />
+          </div>
+          <div className="form-group">
+            <label>Budget</label>
+            <select
+              name="budgetRange"
+              defaultValue={selectedReservation?.budget_range}
+            >
+              <option value="0-100">0-100€</option>
+              <option value="100-500">100-500€</option>
+              <option value="500-1000">500-1000€</option>
+              <option value="1000+">1000€ et plus</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Statut de Paiement</label>
+            <select
+              name="paymentStatus"
+              defaultValue={selectedReservation?.payment_status || 'unpaid'}
+            >
+              <option value="unpaid">Non Payé</option>
+              <option value="paid">Payé</option>
+            </select>
+          </div>
+          <div className="form-actions">
             <button type="submit">Modifier</button>
-            <button type="button" onClick={() => setShowEditForm(false)}>Annuler</button>
-          </form>
-        </div>
-      )}
-
-      {/* Formulaire d'upload de fichiers */}
-      {showUploadForm && (
-        <div className="upload-files-form">
-          <h2>Uploader des fichiers pour la réservation #{showUploadForm}</h2>
-          <form onSubmit={(e) => handleUploadFiles(e, showUploadForm)}>
-            <div className="form-group">
-              <label>Sélectionner des fichiers :</label>
-              <input type="file" name="files" multiple required />
-            </div>
-            <button type="submit">Uploader</button>
-            <button type="button" onClick={() => setShowUploadForm(null)}>Annuler</button>
-          </form>
-        </div>
-      )}
+            <button type="button" onClick={() => setShowEditModal(false)}>
+              Annuler
+            </button>
+          </div>
+        </form>
+      </Modal>
 
       <style>
         {`
-          .reservations-page {
-            padding: 20px;
-            background: #f4f6f9;
+          .admin-reservations-page {
+            padding: 40px;
+            background: linear-gradient(135deg, #ece9e6 0%, #ffffff 100%);
             min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           }
 
           .page-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
           }
 
-          .back-to-dashboard {
+          .page-header h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+          }
+
+          .back-btn {
             background: #3498db;
             color: #fff;
             padding: 10px 20px;
-            border-radius: 5px;
+            border-radius: 25px;
             text-decoration: none;
+            transition: background 0.3s;
           }
 
-          .back-to-dashboard:hover {
+          .back-btn:hover {
             background: #2980b9;
           }
 
           .reservations-section {
-            margin-top: 20px;
             background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
           }
 
-          .add-reservation-btn {
-            background: #3498db;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
+          .controls {
+            display: flex;
+            gap: 20px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+          }
+
+          .search-bar {
             display: flex;
             align-items: center;
-            gap: 5px;
-          }
-
-          .add-reservation-btn:hover {
-            background: #2980b9;
-          }
-
-          .reservation-list table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .reservation-list th,
-          .reservation-list td {
+            background: #f4f6f9;
             padding: 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
+            border-radius: 25px;
+            flex: 1;
+            min-width: 200px;
           }
 
-          .reservation-list th {
-            background: #3498db;
+          .search-bar svg {
+            margin-right: 10px;
+            color: #555;
+          }
+
+          .search-bar input {
+            border: none;
+            background: none;
+            outline: none;
+            width: 100%;
+            font-size: 1rem;
+            color: #2c3e50;
+          }
+
+          .filter {
+            display: flex;
+            align-items: center;
+            background: #f4f6f9;
+            padding: 10px;
+            border-radius: 25px;
+          }
+
+          .filter svg {
+            margin-right: 10px;
+            color: #555;
+          }
+
+          .filter select {
+            border: none;
+            background: none;
+            outline: none;
+            font-size: 1rem;
+            color: #2c3e50;
+          }
+
+          .reservation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+          }
+
+          .reservation-card {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+          }
+
+          .reservation-card:hover {
+            transform: translateY(-5px);
+          }
+
+          .reservation-card h3 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 10px;
+          }
+
+          .reservation-card p {
+            margin: 5px 0;
+            color: #555;
+          }
+
+          .reservation-card select {
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 0.9rem;
+          }
+
+          .status-paid {
+            background-color: #2ecc71;
             color: #fff;
           }
 
-          .edit-btn, .delete-btn, .upload-btn, .delete-file-btn {
-            padding: 5px 10px;
+          .status-unpaid {
+            background-color: #e74c3c;
+            color: #fff;
+          }
+
+          .card-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+          }
+
+          .accept-btn,
+          .reject-btn,
+          .edit-btn,
+          .delete-btn {
+            padding: 10px 20px;
             border: none;
-            border-radius: 4px;
+            border-radius: 25px;
             cursor: pointer;
-            margin-right: 5px;
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            transition: background 0.3s;
+            font-size: 0.9rem;
+          }
+
+          .accept-btn {
+            background: #2ecc71;
+            color: #fff;
+          }
+
+          .accept-btn:hover {
+            background: #27ae60;
+          }
+
+          .reject-btn {
+            background: #e74c3c;
+            color: #fff;
+          }
+
+          .reject-btn:hover {
+            background: #c0392b;
           }
 
           .edit-btn {
@@ -573,91 +632,131 @@ const DomainReservations = () => {
             background: #d4ac0d;
           }
 
-          .delete-btn, .delete-file-btn {
+          .delete-btn {
             background: #e74c3c;
             color: #fff;
           }
 
-          .delete-btn:hover, .delete-file-btn:hover {
+          .delete-btn:hover {
             background: #c0392b;
           }
 
-          .upload-btn {
-            background: #2ecc71;
+          .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+          }
+
+          .pagination button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            background: #f4f6f9;
+            cursor: pointer;
+            transition: background 0.3s;
+          }
+
+          .pagination button:hover {
+            background: #3498db;
             color: #fff;
           }
 
-          .upload-btn:hover {
-            background: #27ae60;
+          .pagination button.active {
+            background: #3498db;
+            color: #fff;
           }
 
-          .file-list {
-            margin-top: 10px;
-          }
-
-          .file-list ul {
-            list-style: none;
-            padding: 0;
-          }
-
-          .file-list li {
+          .modal-overlay {
+            background: rgba(0, 0, 0, 0.5);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            padding: 5px 0;
+            z-index: 1000;
           }
 
-          .add-reservation-form, .upload-files-form {
-            margin-top: 20px;
+          .modal {
             background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+          }
+
+          .modal h2 {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
+          }
+
+          .edit-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
           }
 
           .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
           }
 
           .form-group label {
-            display: block;
+            font-weight: 600;
+            color: #2c3e50;
             margin-bottom: 5px;
           }
 
           .form-group input,
-          .form-group select,
-          .form-group textarea {
-            width: 100%;
-            padding: 8px;
+          .form-group select {
+            padding: 10px;
             border: 1px solid #ddd;
-            border-radius: 4px;
+            border-radius: 5px;
+            font-size: 1rem;
           }
 
-          .form-group textarea {
-            height: 100px;
-            resize: vertical;
+          .form-actions {
+            grid-column: span 2;
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
           }
 
-          .add-reservation-form button, .upload-files-form button {
+          .form-actions button {
             background: #3498db;
             color: #fff;
             border: none;
             padding: 10px 20px;
-            border-radius: 5px;
+            border-radius: 25px;
             cursor: pointer;
-            margin-right: 10px;
+            transition: background 0.3s;
           }
 
-          .add-reservation-form button:hover, .upload-files-form button:hover {
+          .form-actions button:hover {
             background: #2980b9;
           }
 
+          .form-actions button:last-child {
+            background: #e74c3c;
+          }
+
+          .form-actions button:last-child:hover {
+            background: #c0392b;
+          }
+
           .error-message {
-            color: #e74c3c;
-            margin-bottom: 10px;
-            padding: 10px;
             background: #ffebee;
-            border-radius: 4px;
+            color: #e74c3c;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
           }
         `}
       </style>
@@ -665,4 +764,4 @@ const DomainReservations = () => {
   );
 };
 
-export default DomainReservations;
+export default AdminDomainReservations;

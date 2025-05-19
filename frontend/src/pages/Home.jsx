@@ -1,326 +1,208 @@
-import React, { Fragment } from 'react';
-import logo from '../assets/img/logo/logo.svg'; // Import du logo
-import heroImg from '../assets/img/hero/hero-5/hero-img.svg'; // Image hero
-import aboutImg from '../assets/img/about/about-4/about-img.svg'; // Image about
-import brandsImg from '../assets/img/clients/brands.svg'; // Image clients
-import heroBg from '../assets/img/hero/hero-5/hero-bg.svg'; // Fond hero
-import logoPW from '../assets/img/logo/logoPW.png';
-import Navb from './Navb';
+// client/src/pages/Home.jsx
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import axios from 'axios';
+import Navbar from '../pages/Navb';
+import logo from '../assets/img/logo/logo.svg';
+import heroImg from '../assets/img/hero/hero-5/hero-img.svg';
+import aboutImg from '../assets/img/about/about-4/about-img.svg';
+import '../home.css';
 
-function Home() {
+const Home = () => {
+  const [offers, setOffers] = useState([]);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/api/offers');
+        setOffers(response.data);
+        setError(null);
+      } catch (err) {
+        setError('Impossible de charger les offres. Veuillez réessayer plus tard.');
+        console.error('Erreur lors de la récupération des offres:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchOffers();
+
+    const scrollTop = document.querySelector('.scroll-top');
+    const handleScroll = () => {
+      if (scrollTop) {
+        scrollTop.classList.toggle('hidden', window.scrollY < 200);
+      }
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Helper function to format storage display
+  const getStorageDisplay = (offer) => {
+    if (offer.offer_type === 'domain') {
+      return `Domaine: .${offer.domain_type || 'tous'}`;
+    }
+    return `${offer.storage_space || 'Illimité'} Go de stockage`;
+  };
+
   return (
-    <Fragment>
+    <>
       {/* Preloader */}
-      <div className="preloader">
-        <div className="loader">
-          <div className="spinner">
-            <div className="spinner-container">
-              <div className="spinner-rotator">
-                <div className="spinner-left">
-                  <div className="spinner-circle"></div>
-                </div>
-                <div className="spinner-right">
-                  <div className="spinner-circle"></div>
-                </div>
-              </div>
-            </div>
-          </div>
+      {isLoading && (
+        <div className="preloader">
+          <div className="spinner"></div>
         </div>
-      </div>
+      )}
 
-      {/* Section Hero avec Header */}
-      <section id="home" className="hero-section-wrapper-5">
-<Navb></Navb>
-
-        <div
-          className="hero-section hero-style-5 img-bg"
-          style={{ backgroundImage: `url(${heroBg})` }}
-        >
-          <div className="container">
-            <div className="row">
-              <div className="col-lg-6">
-                <div className="hero-content-wrapper">
-                  <h2 className="mb-30 wow fadeInUp" data-wow-delay=".2s">
-                    You're Using Free Lite Version
-                  </h2>
-                  <p className="mb-30 wow fadeInUp" data-wow-delay=".4s">
-                    Please purchase full version of the template to get all
-                    sections and permission to use with commercial projects.
-                  </p>
-                  <a
-                    href="#0"
-                    className="button button-lg radius-50 wow fadeInUp"
-                    data-wow-delay=".6s"
-                  >
-                    Get Started <i className="lni lni-chevron-right"></i>
-                  </a>
-                </div>
-              </div>
-              <div className="col-lg-6 align-self-end">
-                <div className="hero-image wow fadeInUp" data-wow-delay=".5s">
-                  <img src={heroImg} alt="" />
-                </div>
-              </div>
-            </div>
+      {/* Hero Section */}
+      <section id="home" className="hero">
+        <Navbar />
+        <div className="container hero-content">
+          <div className="hero-text">
+            <h1 className="animate-fade-in-up">Gérez Votre Site Facilement</h1>
+            <p className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              Réservez un domaine, hébergez votre site et téléchargez vos fichiers en quelques clics. Construisez votre présence en ligne avec nos solutions DNS et d'hébergement.
+            </p>
+            <Link to="/clientreser" className="btn btn-primary animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              Mes Réservations <i className="lni lni-chevron-right"></i>
+            </Link>
+          </div>
+          <div className="hero-image animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+            <img src={heroImg} alt="Hero" onError={(e) => (e.target.src = 'https://via.placeholder.com/500')} />
           </div>
         </div>
       </section>
 
-      {/* Section Feature */}
-      <section id="feature" className="feature-section feature-style-5">
+      {/* Features Section */}
+      <section id="features" className="features">
         <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-xxl-5 col-xl-5 col-lg-7 col-md-8">
-              <div className="section-title text-center mb-60">
-                <h3 className="mb-15 wow fadeInUp" data-wow-delay=".2s">
-                  Specializing In
-                </h3>
-                <p className="wow fadeInUp" data-wow-delay=".4s">
-                  Stop wasting time and money designing and managing a website
-                  that doesn’t get results. Happiness guaranteed!
-                </p>
-              </div>
-            </div>
+          <div className="section-title animate-fade-in-up">
+            <h2>Nos Spécialités</h2>
+            <p>Nous offrons des services de premier ordre pour garantir que votre site soit rapide, sécurisé et fiable.</p>
           </div>
-
-          <div className="row">
-            <div className="col-lg-4 col-md-6">
-              <div className="single-feature wow fadeInUp" data-wow-delay=".2s">
-                <div className="icon">
-                  <i className="lni lni-vector"></i>
-                  <svg
-                    width="110"
-                    height="72"
-                    viewBox="0 0 110 72"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M110 54.7589C110 85.0014 85.3757 66.2583 55 66.2583C24.6243 66.2583 0 85.0014 0 54.7589C0 24.5164 24.6243 0 55 0C85.3757 0 110 24.5164 110 54.7589Z"
-                      fill="#EBF4FF"
-                    />
+          <div className="features-grid">
+            {[
+              { icon: 'lni-vector', title: 'Enregistrement de Domaine', desc: 'Sécurisez votre nom de domaine idéal avec notre processus simple.' },
+              { icon: 'lni-cloud', title: 'Hébergement Web', desc: 'Hébergement fiable avec bande passante illimitée et support 24/7.' },
+              { icon: 'lni-shield', title: 'Sécurité SSL', desc: 'Protégez votre site avec des certificats SSL gratuits.' },
+            ].map((feature, index) => (
+              <div key={index} className="feature-card glassmorphic animate-fade-in-up" style={{ animationDelay: `${0.2 * (index + 1)}s` }}>
+                <div className="feature-icon">
+                  <i className={`lni ${feature.icon}`}></i>
+                  <svg className="icon-bg" width="60" height="60" viewBox="0 0 60 60" fill="none">
+                    <circle cx="30" cy="30" r="30" fill="rgba(255, 255, 255, 0.2)" />
                   </svg>
                 </div>
-                <div className="content">
-                  <h5>Graphics Design</h5>
-                  <p>
-                    Short description for the ones who look for something new.
-                  </p>
-                </div>
+                <h3>{feature.title}</h3>
+                <p>{feature.desc}</p>
               </div>
-            </div>
-            {/* Répète pour les autres features, je raccourcis ici */}
-            <div className="col-lg-4 col-md-6">
-              <div className="single-feature wow fadeInUp" data-wow-delay=".4s">
-                <div className="icon">
-                  <i className="lni lni-pallet"></i>
-                  <svg
-                    width="110"
-                    height="72"
-                    viewBox="0 0 110 72"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      d="M110 54.7589C110 85.0014 85.3757 66.2583 55 66.2583C24.6243 66.2583 0 85.0014 0 54.7589C0 24.5164 24.6243 0 55 0C85.3757 0 110 24.5164 110 54.7589Z"
-                      fill="#EBF4FF"
-                    />
-                  </svg>
-                </div>
-                <div className="content">
-                  <h5>Print Design</h5>
-                  <p>
-                    Short description for the ones who look for something new.
-                  </p>
-                </div>
-              </div>
-            </div>
-            {/* Ajoute les autres blocs "single-feature" de la même manière */}
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Section About */}
-      <section id="about" className="about-section about-style-4">
+      {/* Offers Section */}
+      <section id="offers" className="offers">
         <div className="container">
-          <div className="row align-items-center">
-            <div className="col-xl-5 col-lg-6">
-              <div className="about-content-wrapper">
-                <div className="section-title mb-30">
-                  <h3 className="mb-25 wow fadeInUp" data-wow-delay=".2s">
-                    The future of designing starts here
-                  </h3>
-                  <p className="wow fadeInUp" data-wow-delay=".3s">
-                    Stop wasting time and money designing and managing a
-                    website that doesn’t get results. Happiness guaranteed,
-                  </p>
+          <div className="section-title animate-fade-in-up">
+            <h2>Nos Offres</h2>
+            <p>Choisissez le plan parfait pour vos besoins, de l'enregistrement de domaine à l'hébergement géré.</p>
+          </div>
+          {error && <div className="error-message animate-fade-in-up">{error}</div>}
+          <div className="offers-grid">
+            {offers.length > 0 ? (
+              offers.map((offer, index) => (
+                <div key={offer.id} className="offer-card glassmorphic tilt-card animate-fade-in-up" style={{ animationDelay: `${0.2 * (index + 1)}s` }}>
+                  <h3>{offer.name}</h3>
+                  <p>{offer.description || 'Adapté à vos besoins.'}</p>
+                  <div className="price">€{offer.price}</div>
+                  <ul>
+                    <li>
+                      <i className="lni lni-checkmark-circle"></i>
+                      {getStorageDisplay(offer)}
+                    </li>
+                    <li>
+                      <i className="lni lni-checkmark-circle"></i>
+                      {offer.bandwidth ? `${offer.bandwidth} Go de bande passante` : 'Bande passante illimitée'}
+                    </li>
+                    <li>
+                      <i className="lni lni-checkmark-circle"></i>
+                      {offer.features || 'SSL gratuit, Support 24/7'}
+                    </li>
+                  </ul>
+                  <Link to="/clientreser" className="btn btn-secondary">Commencer</Link>
                 </div>
-                <ul>
-                  <li className="wow fadeInUp" data-wow-delay=".35s">
-                    <i className="lni lni-checkmark-circle"></i>
-                    Stop wasting time and money designing and managing a
-                    website that doesn’t get results.
-                  </li>
-                  <li className="wow fadeInUp" data-wow-delay=".4s">
-                    <i className="lni lni-checkmark-circle"></i>
-                    Stop wasting time and money designing and managing.
-                  </li>
-                  <li className="wow fadeInUp" data-wow-delay=".45s">
-                    <i className="lni lni-checkmark-circle"></i>
-                    Stop wasting time and money designing and managing a
-                    website that doesn’t get results.
-                  </li>
-                </ul>
-                <a
-                  href="#0"
-                  className="button button-lg radius-10 wow fadeInUp"
-                  data-wow-delay=".5s"
-                >
-                  Learn More
-                </a>
-              </div>
+              ))
+            ) : (
+              <p className="no-offers">Aucune offre disponible pour le moment.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* About Section */}
+      <section id="about" className="about">
+        <div className="container">
+          <div className="about-content">
+            <div className="about-text animate-fade-in-up">
+              <h2>L'Avenir de la Gestion Web</h2>
+              <p>Nous simplifions l'enregistrement de domaine, l'hébergement et la gestion de site web pour que vous puissiez vous concentrer sur le développement de votre entreprise.</p>
+              <ul>
+                <li><i className="lni lni-checkmark-circle"></i> Hébergement rapide et fiable avec 99,9 % de disponibilité.</li>
+                <li><i className="lni lni-checkmark-circle"></i> Sécurisez votre domaine avec des certificats SSL gratuits.</li>
+                <li><i className="lni lni-checkmark-circle"></i> Support expert 24/7 pour tous vos besoins.</li>
+              </ul>
+              <Link to="/contact" className="btn btn-primary">En Savoir Plus</Link>
             </div>
-            <div className="col-xl-7 col-lg-6">
-              <div
-                className="about-image text-lg-right wow fadeInUp"
-                data-wow-delay=".5s"
-              >
-                <img src={aboutImg} alt="" />
-              </div>
+            <div className="about-image animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <img src={aboutImg} alt="About" onError={(e) => (e.target.src = 'https://via.placeholder.com/500')} />
             </div>
           </div>
         </div>
       </section>
 
-      {/* Section Pricing */}
-      <section id="pricing" className="pricing-section pricing-style-4 bg-light">
+      {/* Contact Section */}
+      <section id="contact" className="contact">
         <div className="container">
-          <div className="row align-items-center">
-            <div className="col-xl-5 col-lg-6">
-              <div className="section-title mb-60">
-                <h3 className="mb-15 wow fadeInUp" data-wow-delay=".2s">
-                  Pricing Plan
-                </h3>
-                <p className="wow fadeInUp" data-wow-delay=".4s">
-                  Stop wasting time and money designing and managing a website
-                  that doesn’t get results. Happiness guaranteed!
-                </p>
-              </div>
-            </div>
-            <div className="col-xl-7 col-lg-6">
-              <div
-                className="pricing-active-wrapper wow fadeInUp"
-                data-wow-delay=".4s"
-              >
-                <div className="pricing-active">
-                  <div className="single-pricing-wrapper">
-                    <div className="single-pricing">
-                      <h6>Basic Design</h6>
-                      <h4>Web Design</h4>
-                      <h3>$ 29.00</h3>
-                      <ul>
-                        <li>Carefully crafted components</li>
-                        <li>Amazing page examples</li>
-                        <li>Super friendly support team</li>
-                        <li>Awesome Support</li>
-                      </ul>
-                      <a href="#0" className="button radius-30">
-                        Get Started
-                      </a>
-                    </div>
+          <div className="section-title animate-fade-in-up">
+            <h2>Contactez-Nous</h2>
+            <p>Des questions ? Nous sommes là pour vous aider. Contactez notre équipe d'assistance.</p>
+          </div>
+          <div className="contact-content">
+            <form action="assets/php/contact.php" method="POST" className="contact-form glassmorphic animate-fade-in-up">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Nom</label>
+                  <div className="input-wrapper">
+                    <input type="text" name="name" placeholder="Votre Nom" required />
+                    <i className="lni lni-user"></i>
                   </div>
-                  {/* Ajoute les autres single-pricing ici */}
+                </div>
+                <div className="form-group">
+                  <label>Email</label>
+                  <div className="input-wrapper">
+                    <input type="email" name="email" placeholder="Votre Email" required />
+                    <i className="lni lni-envelope"></i>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Contact */}
-      <section id="contact" className="contact-section contact-style-3">
-        <div className="container">
-          <div className="row justify-content-center">
-            <div className="col-xxl-5 col-xl-5 col-lg-7 col-md-10">
-              <div className="section-title text-center mb-50">
-                <h3 className="mb-15">Get in touch</h3>
-                <p>
-                  Stop wasting time and money designing and managing a website
-                  that doesn’t get results. Happiness guaranteed!
-                </p>
+              <div className="form-group">
+                <label>Message</label>
+                <textarea name="message" placeholder="Votre Message" rows="5" required></textarea>
               </div>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col-lg-8">
-              <div className="contact-form-wrapper">
-                <form action="assets/php/contact.php" method="POST">
-                  <div className="row">
-                    <div className="col-md-6">
-                      <div className="single-input">
-                        <input
-                          type="text"
-                          id="name"
-                          name="name"
-                          className="form-input"
-                          placeholder="Name"
-                        />
-                        <i className="lni lni-user"></i>
-                      </div>
-                    </div>
-                    <div className="col-md-6">
-                      <div className="single-input">
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          className="form-input"
-                          placeholder="Email"
-                        />
-                        <i className="lni lni-envelope"></i>
-                      </div>
-                    </div>
-                    {/* Ajoute les autres champs ici */}
-                    <div className="col-md-12">
-                      <div className="form-button">
-                        <button type="submit" className="button">
-                          <i className="lni lni-telegram-original"></i> Submit
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </form>
+              <button type="submit" className="btn btn-primary">
+                <i className="lni lni-telegram-original"></i> Envoyer
+              </button>
+            </form>
+            <div className="contact-info animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <div className="info-card glassmorphic">
+                <i className="lni lni-phone"></i>
+                <p>+0045939863784<br />+004389478327</p>
               </div>
-            </div>
-            <div className="col-lg-4">
-              <div className="left-wrapper">
-                <div className="row">
-                  <div className="col-lg-12 col-md-6">
-                    <div className="single-item">
-                      <div className="icon">
-                        <i className="lni lni-phone"></i>
-                      </div>
-                      <div className="text">
-                        <p>0045939863784</p>
-                        <p>+004389478327</p>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Ajoute les autres single-item */}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Section Clients */}
-      <section className="clients-logo-section pt-100 pb-100">
-        <div className="container">
-          <div className="row">
-            <div className="col-lg-12">
-              <div className="client-logo wow fadeInUp" data-wow-delay=".2s">
-                <img src={brandsImg} alt="" className="w-100" />
+              <div className="info-card glassmorphic">
+                <i className="lni lni-envelope"></i>
+                <p>support@dnssolutions.com</p>
               </div>
             </div>
           </div>
@@ -328,57 +210,59 @@ function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="footer footer-style-4">
+      <footer className="footer">
         <div className="container">
-          <div className="widget-wrapper">
-            <div className="row">
-              <div className="col-xl-3 col-lg-4 col-md-6">
-                <div
-                  className="footer-widget wow fadeInUp"
-                  data-wow-delay=".2s"
-                >
-                  <div className="logo">
-                    <a href="#0">
-                      <img src={logo} alt="" />
-                    </a>
-                  </div>
-                  <p className="desc">
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit.
-                    Facilisis nulla placerat amet amet congue.
-                  </p>
-                  <ul className="socials">
-                    <li>
-                      <a href="#0">
-                        <i className="lni lni-facebook-filled"></i>
-                      </a>
-                    </li>
-                    {/* Ajoute les autres réseaux sociaux */}
-                  </ul>
-                </div>
+          <div className="footer-content">
+            <div className="footer-section animate-fade-in-up">
+              <div className="footer-logo">
+                <img
+                  src={logo}
+                  alt="Logo"
+                  className="logo-img"
+                  onError={(e) => (e.target.src = 'https://via.placeholder.com/40')}
+                />
+                <span className="logo-text">DNS Solutions</span>
               </div>
-              {/* Ajoute les autres widgets */}
+              <p>Services DNS et d'hébergement fiables pour renforcer votre présence en ligne.</p>
+              <div className="social-links">
+                <a href="#0"><i className="lni lni-facebook-filled"></i></a>
+                <a href="#0"><i className="lni lni-twitter-filled"></i></a>
+                <a href="#0"><i className="lni lni-linkedin-filled"></i></a>
+              </div>
+            </div>
+            <div className="footer-section animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+              <h3>Liens Rapides</h3>
+              <ul>
+                <li><Link to="/home">Accueil</Link></li>
+                <li><Link to="/offers">Offres</Link></li>
+                <li><Link to="/about">À Propos</Link></li>
+              </ul>
+            </div>
+            <div className="footer-section animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
+              <h3>Support</h3>
+              <ul>
+                <li><Link to="/contact">Contactez-Nous</Link></li>
+                <li><a href="#0">FAQ</a></li>
+                <li><a href="#0">Centre d'Aide</a></li>
+              </ul>
+            </div>
+            <div className="footer-section animate-fade-in-up" style={{ animationDelay: '0.6s' }}>
+              <h3>Coordonnées</h3>
+              <p>1234 Web Lane, Internet City<br />support@dnssolutions.com<br />+0045939863784</p>
             </div>
           </div>
-          <div className="copyright-wrapper wow fadeInUp" data-wow-delay=".2s">
-            <p>
-              Design and Developed by{' '}
-              <a href="https://uideck.com" rel="nofollow" target="_blank">
-                UIdeck
-              </a>{' '}
-              Built-with{' '}
-              <a href="https://uideck.com" rel="nofollow" target="_blank">
-                Lindy UI Kit
-              </a>
-            </p>
+          <div className="footer-bottom animate-fade-in-up">
+            <p>© 2025 DNS Solutions. Tous droits réservés.</p>
           </div>
         </div>
       </footer>
 
-      <a href="#" className="scroll-top">
+      {/* Scroll to Top */}
+      <a href="#" className="scroll-top hidden">
         <i className="lni lni-chevron-up"></i>
       </a>
-    </Fragment>
+    </>
   );
-}
+};
 
 export default Home;

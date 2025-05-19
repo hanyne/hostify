@@ -1,7 +1,8 @@
-// src/pages/Client.jsx
+// client/src/pages/Client.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlus, FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
+
 
 const Clients = ({ setClientCount }) => {
   const [clients, setClients] = useState([]);
@@ -10,7 +11,6 @@ const Clients = ({ setClientCount }) => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [error, setError] = useState(null);
 
-  // Utiliser useCallback pour stabiliser fetchClients
   const fetchClients = useCallback(async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/clients');
@@ -22,9 +22,8 @@ const Clients = ({ setClientCount }) => {
       console.error('Erreur lors de la récupération:', error);
       setError('Erreur lors du chargement des clients.');
     }
-  }, [setClientCount]); // Dépendance uniquement sur setClientCount
+  }, [setClientCount]);
 
-  // useEffect ne dépend que de fetchClients, qui est maintenant stable
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
@@ -77,57 +76,46 @@ const Clients = ({ setClientCount }) => {
     }
   };
 
-  // Le reste du JSX reste identique
   return (
     <div>
       {error && <div className="error-message">{error}</div>}
-      <div className="clients-section">
+      <div className="clients-section animate-fade-in-up">
         <h2>Liste des Clients</h2>
-        <button className="add-client-btn" onClick={() => setShowAddForm(true)}>
+        <button className="btn btn-primary" onClick={() => setShowAddForm(true)}>
           <FaPlus /> Ajouter un client
         </button>
         <div className="client-list">
           {clients.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Nom</th>
-                  <th>Prénom</th>
-                  <th>Email</th>
-                  <th>Rôle</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clients.map((client) => (
-                  <tr key={client.id}>
-                    <td>{client.nom}</td>
-                    <td>{client.prenom}</td>
-                    <td>{client.email}</td>
-                    <td>{client.role}</td>
-                    <td>
-                      <button
-                        className="edit-btn"
-                        onClick={() => {
-                          setSelectedClient(client);
-                          setShowEditForm(true);
-                        }}
-                      >
-                        <FaEdit /> Modifier
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDeleteClient(client.id)}
-                      >
-                        <FaTrash /> Supprimer
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="client-cards">
+              {clients.map((client) => (
+                <div key={client.id} className="client-card glassmorphic tilt-card animate-fade-in-up">
+                  <h3>{client.prenom} {client.nom}</h3>
+                  <p><strong>Email:</strong> {client.email}</p>
+                  <p><strong>Rôle:</strong> {client.role}</p>
+                  <div className="client-actions">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setSelectedClient(client);
+                        setShowEditForm(true);
+                      }}
+                    >
+                      <FaEdit /> Modifier
+                    </button>
+                    <button
+                      className="btn btn-danger"
+                      onClick={() => handleDeleteClient(client.id)}
+                    >
+                      <FaTrash /> Supprimer
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <p>Aucun client trouvé.</p>
+            <div className="no-data glassmorphic animate-fade-in-up">
+              <p>Aucun client trouvé.</p>
+            </div>
           )}
         </div>
       </div>

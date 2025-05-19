@@ -1,55 +1,16 @@
-// Dashboard.jsx
-import React, { useState, useEffect } from 'react';
-import { FaServer, FaUsers, FaDollarSign, FaChartLine, FaCog, FaSignOutAlt, FaGlobe, FaClock } from 'react-icons/fa'; // Ajout de FaClock pour l'icône
+// client/src/pages/Dashboard.jsx
+import React, { useState } from 'react';
+import { FaServer, FaUsers, FaDollarSign, FaChartLine, FaCog, FaSignOutAlt } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import Clients from './Client';
-import axios from 'axios';
+import '../Dashboard.css';
 
 const Dashboard = () => {
   const [showClients, setShowClients] = useState(false);
   const [clientCount, setClientCount] = useState(0);
-  const [reservations, setReservations] = useState([]);
-  const [pendingReservationsCount, setPendingReservationsCount] = useState(0); // Nouvel état pour le compteur
-  const [error, setError] = useState(null);
-  const isAdmin = true;
-
-  // Récupérer les réservations pour l'admin
-  useEffect(() => {
-    const fetchReservations = async () => {
-      try {
-        const response = await axios.get('http://localhost:5000/api/reservations');
-        setReservations(response.data);
-        // Calculer le nombre de réservations non traitées (statut 'pending')
-        const pendingCount = response.data.filter(reservation => reservation.status === 'pending').length;
-        setPendingReservationsCount(pendingCount);
-        setError(null);
-      } catch (error) {
-        console.error('Erreur lors de la récupération des réservations:', error.response ? error.response.data : error.message);
-        setError('Erreur lors du chargement des réservations.');
-      }
-    };
-    fetchReservations();
-  }, []);
-
-  // Valider ou refuser une réservation (admin)
-  const handleUpdateStatus = async (id, status) => {
-    try {
-      await axios.put(`http://localhost:5000/api/reservations/${id}/status`, { status });
-      const response = await axios.get('http://localhost:5000/api/reservations');
-      setReservations(response.data);
-      // Recalculer le nombre de réservations non traitées après mise à jour
-      const pendingCount = response.data.filter(reservation => reservation.status === 'pending').length;
-      setPendingReservationsCount(pendingCount);
-      setError(null);
-    } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut:', error.response ? error.response.data : error.message);
-      setError(error.response?.data?.message || 'Erreur lors de la mise à jour du statut.');
-    }
-  };
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>HostAdmin</h2>
@@ -64,7 +25,7 @@ const Dashboard = () => {
             </li>
             <li>
               <Link to="/domain-reservations">
-                <FaGlobe className="icon" /> Réservations de Domaine
+                <FaServer className="icon" /> Réservations
               </Link>
             </li>
             <li>
@@ -83,16 +44,14 @@ const Dashboard = () => {
         </nav>
       </aside>
 
-      {/* Main Content */}
       <main className="main-content">
         <header className="dashboard-header">
           <h1>Bienvenue, Admin</h1>
           <div className="user-profile">
-            <img src="https://via.placeholder.com/40" alt="Profil" onError={(e) => e.target.style.display = 'none'} />
+            <img src="https://via.placeholder.com/40" alt="Profil" onError={(e) => (e.target.style.display = 'none')} />
           </div>
         </header>
 
-        {/* Stats Cards */}
         <div className="stats-grid">
           <div className="stat-card">
             <FaServer className="stat-icon" />
@@ -122,97 +81,10 @@ const Dashboard = () => {
               <p>Uptime</p>
             </div>
           </div>
-          {/* Nouvelle carte pour le compteur des réservations non traitées */}
-          <div className="stat-card pending-reservations">
-            <FaClock className="stat-icon" />
-            <div>
-              <h3>{pendingReservationsCount}</h3>
-              <p>Réservations en attente</p>
-            </div>
-          </div>
         </div>
 
-        {/* Afficher Clients */}
         {showClients && <Clients setClientCount={setClientCount} />}
 
-        {/* Section Réservations pour l'admin (accepter/rejeter uniquement) */}
-        <div className="reservations-section">
-          <h2>Liste des Réservations de Domaine</h2>
-          {error && <div className="error-message">{error}</div>}
-          <div className="reservation-list">
-            {reservations.length > 0 ? (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Client</th>
-                    <th>Nom de Domaine</th>
-                    <th>Offre</th>
-                    <th>Technologies</th>
-                    <th>Type de Projet</th>
-                    <th>Hébergement</th>
-                    <th>Services Supp.</th>
-                    <th>Contact</th>
-                    <th>Date Limite</th>
-                    <th>Budget</th>
-                    <th>Statut</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reservations.map((reservation) => (
-                    <tr key={reservation.id}>
-                      <td>
-                        {reservation.nom
-                          ? `${reservation.nom} ${reservation.prenom} (${reservation.email})`
-                          : 'Utilisateur non authentifié'}
-                      </td>
-                      <td>{reservation.domain_name}</td>
-                      <td>
-                        {`${reservation.offer_name} (${reservation.duration_months} mois, ${reservation.price}€)`}
-                        <br />
-                        <small>{reservation.description}</small>
-                        <br />
-                        <small>Fonctionnalités: {reservation.features}</small>
-                        <br />
-                        <small>Type de domaine: {reservation.domain_type}</small>
-                      </td>
-                      <td>{reservation.technologies}</td>
-                      <td>{reservation.project_type}</td>
-                      <td>{reservation.hosting_needed ? 'Oui' : 'Non'}</td>
-                      <td>{reservation.additional_services || 'Aucun'}</td>
-                      <td>{reservation.preferred_contact_method}</td>
-                      <td>{reservation.project_deadline || 'Non spécifié'}</td>
-                      <td>{reservation.budget_range}€</td>
-                      <td>{reservation.status}</td>
-                      <td>
-                        {isAdmin && reservation.status === 'pending' && (
-                          <>
-                            <button
-                              className="accept-btn"
-                              onClick={() => handleUpdateStatus(reservation.id, 'accepted')}
-                            >
-                              Accepter
-                            </button>
-                            <button
-                              className="reject-btn"
-                              onClick={() => handleUpdateStatus(reservation.id, 'rejected')}
-                            >
-                              Refuser
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <p>Aucune réservation trouvée.</p>
-            )}
-          </div>
-        </div>
-
-        {/* Recent Activity */}
         <div className="recent-activity">
           <h2>Activité Récente</h2>
           <div className="activity-list">
@@ -228,12 +100,12 @@ const Dashboard = () => {
         </div>
       </main>
 
-      {/* CSS */}
       <style>
         {`
           .dashboard-container {
             display: flex;
-            height: 100vh;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           }
 
           .sidebar {
@@ -241,11 +113,13 @@ const Dashboard = () => {
             background: #2c3e50;
             color: #fff;
             padding: 20px 0;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
           }
 
           .sidebar-header {
             padding: 10px 20px;
             border-bottom: 1px solid #34495e;
+            text-align: center;
           }
 
           .sidebar-nav ul {
@@ -257,6 +131,8 @@ const Dashboard = () => {
             padding: 15px 20px;
             cursor: pointer;
             transition: background 0.3s;
+            display: flex;
+            align-items: center;
           }
 
           .sidebar-nav ul li:hover,
@@ -266,10 +142,7 @@ const Dashboard = () => {
 
           .sidebar-nav ul li .icon {
             margin-right: 10px;
-          }
-
-          .sidebar-nav ul li.logout {
-            margin-top: auto;
+            font-size: 1.2rem;
           }
 
           .sidebar-nav ul li a {
@@ -277,11 +150,16 @@ const Dashboard = () => {
             text-decoration: none;
             display: flex;
             align-items: center;
+            width: 100%;
+          }
+
+          .sidebar-nav ul li.logout {
+            margin-top: auto;
           }
 
           .main-content {
             flex: 1;
-            padding: 20px;
+            padding: 40px;
             background: #f4f6f9;
             overflow-y: auto;
           }
@@ -290,166 +168,68 @@ const Dashboard = () => {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+          }
+
+          .dashboard-header h1 {
+            font-size: 2.5rem;
+            color: #2c3e50;
           }
 
           .user-profile img {
             border-radius: 50%;
+            width: 40px;
+            height: 40px;
           }
 
           .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Ajustement pour plus de cartes */
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 30px;
           }
 
           .stat-card {
             background: #fff;
             padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.2s;
           }
 
           .stat-card:hover {
-            transform: translateY(-3px); /* Effet de survol */
+            transform: translateY(-5px);
           }
 
           .stat-icon {
-            font-size: 24px;
+            font-size: 2rem;
             color: #3498db;
             margin-bottom: 10px;
           }
 
-          .pending-reservations .stat-icon {
-            color: #e74c3c; /* Couleur rouge pour attirer l'attention */
+          .stat-card h3 {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            margin: 0;
           }
 
-          .pending-reservations h3 {
-            color: #e74c3c; /* Chiffre en rouge */
-          }
-
-          .clients-section {
-            margin-top: 20px;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-          }
-
-          .add-client-btn {
-            background: #3498db;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-          }
-
-          .add-client-btn:hover {
-            background: #2980b9;
-          }
-
-          .client-list table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .client-list th,
-          .client-list td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: left;
-          }
-
-          .client-list th {
-            background: #3498db;
-            color: #fff;
-          }
-
-          .edit-btn, .delete-btn {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-right: 5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-          }
-
-          .edit-btn {
-            background: #f1c40f;
-            color: #fff;
-          }
-
-          .edit-btn:hover {
-            background: #d4ac0d;
-          }
-
-          .delete-btn {
-            background: #e74c3c;
-            color: #fff;
-          }
-
-          .delete-btn:hover {
-            background: #c0392b;
-          }
-
-          .add-client-form {
-            margin-top: 20px;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-          }
-
-          .form-group {
-            margin-bottom: 15px;
-          }
-
-          .form-group label {
-            display: block;
-            margin-bottom: 5px;
-          }
-
-          .form-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-          }
-
-          .add-client-form button {
-            background: #3498db;
-            color: #fff;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-          }
-
-          .add-client-form button:hover {
-            background: #2980b9;
+          .stat-card p {
+            color: #555;
+            margin: 5px 0 0;
           }
 
           .recent-activity {
-            margin-top: 20px;
             background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
           }
 
-          .activity-list {
-            margin-top: 10px;
+          .recent-activity h2 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-bottom: 20px;
           }
 
           .activity-item {
@@ -459,109 +239,14 @@ const Dashboard = () => {
             border-bottom: 1px solid #ddd;
           }
 
-          .error-message {
-            color: #e74c3c;
-            margin-bottom: 10px;
-            padding: 10px;
-            background: #ffebee;
-            border-radius: 4px;
+          .activity-item p {
+            margin: 0;
+            color: #555;
           }
 
-          /* Styles pour la section des réservations */
-          .reservations-section {
-            margin-top: 20px;
-            background: linear-gradient(145deg, #ffffff, #e6e6e6);
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-            border: 1px solid #ddd;
-            position: relative;
-            overflow: hidden;
-          }
-
-          .reservations-section h2 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #3498db;
-            padding-bottom: 10px;
-            display: inline-block;
-          }
-
-          .reservation-list {
-            max-height: 400px;
-            overflow-x: auto;
-            overflow-y: auto;
-          }
-
-          .reservation-list table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-          }
-
-          .reservation-list th,
-          .reservation-list td {
-            padding: 12px 15px;
-            text-align: left;
+          .activity-item span {
+            color: #888;
             font-size: 0.9rem;
-            border-bottom: 1px solid #e0e0e0;
-            white-space: nowrap;
-          }
-
-          .reservation-list th {
-            background: #3498db;
-            color: #fff;
-            position: sticky;
-            top: 0;
-            z-index: 1;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-          }
-
-          .reservation-list td {
-            background: #fff;
-            transition: background 0.3s;
-          }
-
-          .reservation-list tr:hover td {
-            background: #f8f9fa;
-          }
-
-          .reservation-list small {
-            color: #666;
-            font-size: 0.8rem;
-          }
-
-          .accept-btn, .reject-btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 8px;
-            font-size: 0.9rem;
-            transition: transform 0.1s, background 0.3s;
-          }
-
-          .accept-btn {
-            background: #2ecc71;
-            color: #fff;
-          }
-
-          .accept-btn:hover {
-            background: #27ae60;
-            transform: scale(1.05);
-          }
-
-          .reject-btn {
-            background: #e74c3c;
-            color: #fff;
-          }
-
-          .reject-btn:hover {
-            background: #c0392b;
-            transform: scale(1.05);
           }
         `}
       </style>

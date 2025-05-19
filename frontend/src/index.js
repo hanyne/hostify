@@ -1,9 +1,9 @@
+// client/src/index.js
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import 'bootstrap/dist/css/bootstrap.min.css'; // Si tu utilises Bootstrap via npm
-import { WOW } from 'wowjs';
+import 'bootstrap/dist/css/bootstrap.min.css';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -11,7 +11,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-
-// Initialisation de WOW.js
-const wow = new WOW();
-wow.init();
