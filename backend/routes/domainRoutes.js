@@ -11,16 +11,23 @@ const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_A
 // Middleware to authenticate admin
 const authenticateAdmin = (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1]; // Bearer <token>
-  if (!token) return res.status(401).json({ error: 'Accès non autorisé' });
+  console.log('Token reçu:', token); // Log pour débogage
+  if (!token) {
+    console.log('Aucun token fourni');
+    return res.status(401).json({ error: 'Accès non autorisé' });
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token décodé:', decoded); // Log pour débogage
     if (decoded.role !== 'admin') {
+      console.log('Rôle non admin:', decoded.role);
       return res.status(403).json({ error: 'Accès interdit: réservé aux administrateurs' });
     }
     req.user = decoded;
     next();
   } catch (error) {
+    console.error('Erreur de vérification du token:', error.message);
     return res.status(401).json({ error: 'Token invalide' });
   }
 };
@@ -35,6 +42,7 @@ router.get('/offers', domainReservationController.getOffers);
 router.put('/reservations/:id/payment', authenticateAdmin, async (req, res) => {
   const { id } = req.params;
   const { payment_status } = req.body;
+  console.log(`Mise à jour du statut de paiement pour la réservation ${id}: ${payment_status}`);
   try {
     const reservation = await domainReservationController.findById(id);
     if (!reservation) {
@@ -45,7 +53,6 @@ router.put('/reservations/:id/payment', authenticateAdmin, async (req, res) => {
     }
 
     await domainReservationController.updatePaymentStatus(id, payment_status);
-    // Ajoutez une réponse après la mise à jour
     const updatedReservation = await domainReservationController.findById(id);
     if (payment_status === 'paid') {
       const hostingLink = `${process.env.BASE_DOMAIN}/${reservation.domain_name}`;
