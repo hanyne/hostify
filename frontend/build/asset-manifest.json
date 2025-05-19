@@ -1,20 +1,18 @@
 {
   "files": {
-    "main.css": "/static/css/main.29c9e034.css",
-    "main.js": "/static/js/main.7f31932f.js",
+    "main.css": "/static/css/main.a0d77f23.css",
+    "main.js": "/static/js/main.061c8015.js",
     "static/media/logoPW.png": "/static/media/logoPW.8744333f6d476d74158b.png",
     "static/media/bg-01.jpg": "/static/media/bg-01.dab965cc9c13ebac22b4.jpg",
     "static/media/about-img.svg": "/static/media/about-img.5d30e7197898b2deb784ed53baca2b29.svg",
-    "static/media/brands.svg": "/static/media/brands.1433e4b904be356f4a1b004b288eb493.svg",
     "static/media/hero-img.svg": "/static/media/hero-img.eec6540775577adf0c39972dcad1c3c1.svg",
-    "static/media/hero-bg.svg": "/static/media/hero-bg.cf71e8a47c648cf65bf4d149cda48e62.svg",
     "index.html": "/index.html",
     "static/media/logo.svg": "/static/media/logo.e44fa9cac4989e2e0226ba790e938ef7.svg",
-    "main.29c9e034.css.map": "/static/css/main.29c9e034.css.map",
-    "main.7f31932f.js.map": "/static/js/main.7f31932f.js.map"
+    "main.a0d77f23.css.map": "/static/css/main.a0d77f23.css.map",
+    "main.061c8015.js.map": "/static/js/main.061c8015.js.map"
   },
   "entrypoints": [
-    "static/css/main.29c9e034.css",
-    "static/js/main.7f31932f.js"
+    "static/css/main.a0d77f23.css",
+    "static/js/main.061c8015.js"
   ]
 }
