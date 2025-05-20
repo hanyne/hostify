@@ -14,6 +14,7 @@ const Login = () => {
     mot_de_passe: '',
   });
   const [message, setMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false); // Add loading state
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -21,28 +22,35 @@ const Login = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  console.log('Form submitted:', formData);
-  try {
-    console.log('Submitting login request to:', `${API_URL}/login`, formData);
-    const response = await axios.post(`${API_URL}/login`, formData);
-    console.log('Login response:', response.data);
-    setMessage(response.data.message);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    localStorage.setItem('token', response.data.token); // Ajouter cette ligne pour stocker le token
-    if (response.data.user.role === 'admin') {
-      navigate('/dashboard');
-    } else {
-      navigate('/home');
+    e.preventDefault();
+    setIsLoading(true); // Set loading state
+    setMessage(''); // Clear previous messages
+    console.log('Form submitted:', formData);
+    try {
+      console.log('Submitting login request to:', `${API_URL}/login`, formData);
+      const response = await axios.post(`${API_URL}/login`, formData, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      console.log('Login response:', response.data);
+      setMessage(response.data.message || 'Connexion réussie !');
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem('token', response.data.token);
+      if (response.data.user.role === 'admin') {
+        navigate('/dashboard');
+      } else {
+        navigate('/home');
+      }
+    } catch (error) {
+      console.error('Login error:', error.response?.data || error.message);
+      setMessage(error.response?.data?.message || 'Erreur lors de la connexion. Veuillez vérifier vos informations.');
+    } finally {
+      setIsLoading(false); // Reset loading state
     }
-  } catch (error) {
-    console.error('Login error:', error.response?.data || error.message);
-    setMessage(error.response?.data?.message || 'Erreur lors de la connexion.');
-  }
-};
+  };
+
   return (
     <>
-      <div className="preloader">
+      <div className="preloader" style={{ display: isLoading ? 'block' : 'none' }}>
         <p>Chargement...</p>
       </div>
 
@@ -55,7 +63,7 @@ const Login = () => {
             <form className="login100-form validate-form" onSubmit={handleSubmit}>
               <span className="login100-form-title p-b-49">Connexion</span>
 
-              {message && <p className="text-center">{message}</p>}
+              {message && <p className="text-center" style={{ color: message.includes('réussie') ? 'green' : 'red' }}>{message}</p>}
 
               <div className="wrap-input100 validate-input m-b-23" data-validate="L'email est requis">
                 <span className="label-input100">Email</span>
@@ -67,6 +75,7 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
                 <span className="focus-input100" data-symbol=""></span>
               </div>
@@ -81,6 +90,7 @@ const Login = () => {
                   value={formData.mot_de_passe}
                   onChange={handleChange}
                   required
+                  disabled={isLoading}
                 />
                 <span className="focus-input100" data-symbol=""></span>
               </div>
@@ -92,8 +102,8 @@ const Login = () => {
               <div className="container-login100-form-btn">
                 <div className="wrap-login100-form-btn">
                   <div className="login100-form-bgbtn"></div>
-                  <button className="login100-form-btn" type="submit">
-                    Se connecter
+                  <button className="login100-form-btn" type="submit" disabled={isLoading}>
+                    {isLoading ? 'Connexion en cours...' : 'Se connecter'}
                   </button>
                 </div>
               </div>
