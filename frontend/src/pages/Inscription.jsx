@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import backgroundImage from '../assets/images/bg-01.jpg';
 
-// Determine the API URL based on the environment
 const API_URL = process.env.NODE_ENV === 'production' 
   ? 'https://hostify-zvms.onrender.com/api' 
   : 'http://localhost:5000/api';
@@ -15,7 +14,7 @@ const Inscription = () => {
     mot_de_passe: '',
   });
   const [message, setMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false); // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -23,19 +22,24 @@ const Inscription = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true); // Set loading state
-    setMessage(''); // Clear previous messages
+    setIsLoading(true);
+    setMessage('');
     try {
+      console.log('Submitting to:', `${API_URL}/inscription`, formData);
       const response = await axios.post(`${API_URL}/inscription`, formData, {
         headers: { 'Content-Type': 'application/json' },
       });
       setMessage(response.data.message || 'Inscription réussie !');
-      setFormData({ nom: '', prenom: '', email: '', mot_de_passe: '' }); // Reset form
+      setFormData({ nom: '', prenom: '', email: '', mot_de_passe: '' });
     } catch (error) {
       console.error('Inscription error:', error.response?.data || error.message);
-      setMessage(error.response?.data?.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
+      if (error.response?.status === 502) {
+        setMessage('Erreur serveur (502). Veuillez réessayer plus tard ou contacter le support.');
+      } else {
+        setMessage(error.response?.data?.message || 'Erreur lors de l\'inscription. Veuillez réessayer.');
+      }
     } finally {
-      setIsLoading(false); // Reset loading state
+      setIsLoading(false);
     }
   };
 
@@ -52,7 +56,7 @@ const Inscription = () => {
         >
           <div className="wrap-login100 p-l-55 p-r-55 p-t-65 p-b-54">
             <form className="login100-form validate-form" onSubmit={handleSubmit}>
-              <span className="login100-form-title p-b-49">Inscription</span>
+              <span className="login500-form-title p-b-49">Inscription</span>
 
               {message && <p className="text-center" style={{ color: message.includes('réussie') ? 'green' : 'red' }}>{message}</p>}
 
