@@ -17,13 +17,17 @@ const transporter = nodemailer.createTransport({
 
 const authController = {
   register: async (req, res) => {
-    const { nom, prenom, email, mot_de_passe } = req.body;
+    const { nom, prenom, email, mot_de_passe, phone } = req.body;
     try {
-      console.log('Register attempt:', { nom, prenom, email });
+      console.log('Register attempt:', { nom, prenom, email, phone });
       const existingUser = await User.findByEmail(email);
       console.log('Existing user check:', existingUser);
       if (existingUser) return res.status(400).json({ message: 'Cet email est déjà utilisé.' });
-      await User.createUser(nom, prenom, email, mot_de_passe, 'client');
+      // Validate phone number format
+      if (!phone || !/^\+216\d{8}$/.test(phone)) {
+        return res.status(400).json({ message: 'Numéro de téléphone tunisien invalide (doit commencer par +216 suivi de 8 chiffres).' });
+      }
+      await User.createUser(nom, prenom, email, mot_de_passe, phone, 'client');
       res.status(201).json({ message: 'Client ajouté avec succès !' });
     } catch (error) {
       console.error('Erreur lors de l\'inscription:', {

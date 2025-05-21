@@ -58,14 +58,14 @@ class User {
     }
   }
 
-  static async createUser(nom, prenom, email, mot_de_passe, role = 'client') {
+  static async createUser(nom, prenom, email, mot_de_passe, phone, role = 'client') {
     try {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(mot_de_passe, salt);
-      console.log('Creating user with email:', email);
+      console.log('Creating user with email:', email, 'phone:', phone);
       await pool.query(
-        'INSERT INTO users (nom, prenom, email, mot_de_passe, role) VALUES (?, ?, ?, ?, ?)',
-        [nom, prenom, email, hashedPassword, role]
+        'INSERT INTO users (nom, prenom, email, mot_de_passe, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+        [nom, prenom, email, hashedPassword, phone, role]
       );
       console.log('User created successfully');
     } catch (error) {

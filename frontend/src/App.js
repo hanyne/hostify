@@ -20,6 +20,7 @@ import Offers from './pages/Offers';
 import './App.css';
 import './index.css';
 import WOW from 'wowjs';
+import Stats from './pages/stat';
 
 // Component to handle WOW.js initialization on route change
 const WowInitializer = () => {
@@ -64,6 +65,7 @@ function App() {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/offers" element={<Offers />} />
+        <Route path="/stats" element={<Stats />} />
         <Route
           path="/home"
           element={

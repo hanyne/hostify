@@ -1,16 +1,21 @@
 // client/src/pages/ClientDomainReservations.jsx
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaUpload, FaEye } from 'react-icons/fa';
+import { FaPlus, FaUpload, FaEye, FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
+import Modal from 'react-modal';
+
+Modal.setAppElement('#root');
 
 const ClientDomainReservations = () => {
   const [reservations, setReservations] = useState([]);
   const [domainOffers, setDomainOffers] = useState([]);
   const [hostingOffers, setHostingOffers] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState(null);
   const [error, setError] = useState(null);
-  const [userId] = useState(JSON.parse(localStorage.getItem('user'))?.id || 1); // Get user ID from localStorage
+  const [userId] = useState(JSON.parse(localStorage.getItem('user'))?.id || 1);
+  const [userRole] = useState(JSON.parse(localStorage.getItem('user'))?.role || 'client');
   const [projectFiles, setProjectFiles] = useState({});
   const [showUploadForm, setShowUploadForm] = useState(null);
 
@@ -22,6 +27,7 @@ const ClientDomainReservations = () => {
         setError(null);
       } catch (error) {
         setError('Erreur lors du chargement des réservations.');
+        console.error('Erreur fetchReservations:', error);
       }
     };
     fetchReservations();
@@ -37,6 +43,7 @@ const ClientDomainReservations = () => {
         setError(null);
       } catch (error) {
         setError('Erreur lors du chargement des offres.');
+        console.error('Erreur fetchOffers:', error);
       }
     };
     fetchOffers();
@@ -48,6 +55,7 @@ const ClientDomainReservations = () => {
       setProjectFiles((prev) => ({ ...prev, [reservationId]: response.data }));
     } catch (error) {
       setError('Erreur lors du chargement des fichiers.');
+      console.error('Erreur fetchProjectFiles:', error);
     }
   };
 
@@ -74,6 +82,47 @@ const ClientDomainReservations = () => {
       setError(null);
     } catch (error) {
       setError(error.response?.data?.message || 'Erreur lors de l\'ajout de la réservation.');
+      console.error('Erreur handleAddReservation:', error);
+    }
+  };
+
+  const handleEditReservation = async (e, reservationId) => {
+    e.preventDefault();
+    const formData = {
+      domainName: e.target.domainName.value,
+      offerId: parseInt(e.target.offerId.value),
+      hostingOfferId: e.target.hostingOfferId.value ? parseInt(e.target.hostingOfferId.value) : null,
+      technologies: e.target.technologies.value,
+      projectType: e.target.projectType.value,
+      hostingNeeded: e.target.hostingNeeded.checked ? 1 : 0,
+      additionalServices: e.target.additionalServices.value,
+      preferredContactMethod: e.target.preferredContactMethod.value,
+      projectDeadline: e.target.projectDeadline.value,
+      budgetRange: e.target.budgetRange.value,
+    };
+    try {
+      await axios.put(`http://localhost:5000/api/reservations/${reservationId}`, formData);
+      setShowEditForm(null);
+      const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+      setReservations(response.data);
+      setError(null);
+    } catch (error) {
+      setError(error.response?.data?.message || 'Erreur lors de la modification de la réservation.');
+      console.error('Erreur handleEditReservation:', error);
+    }
+  };
+
+  const handleDeleteReservation = async (reservationId) => {
+    if (window.confirm('Confirmer la suppression de cette réservation ?')) {
+      try {
+        await axios.delete(`http://localhost:5000/api/reservations/${reservationId}`);
+        const response = await axios.get(`http://localhost:5000/api/reservations/user/${userId}`);
+        setReservations(response.data);
+        setError(null);
+      } catch (error) {
+        setError(error.response?.data?.message || 'Erreur lors de la suppression de la réservation.');
+        console.error('Erreur handleDeleteReservation:', error);
+      }
     }
   };
 
@@ -100,6 +149,7 @@ const ClientDomainReservations = () => {
       setError(null);
     } catch (error) {
       setError(error.response?.data?.message || 'Erreur lors de l\'upload des fichiers.');
+      console.error('Erreur handleUploadFiles:', error);
     }
   };
 
@@ -127,7 +177,7 @@ const ClientDomainReservations = () => {
                   <p><strong>Hébergement:</strong> {reservation.hosting_offer_name || 'N/A'}</p>
                   <p><strong>Technologies:</strong> {reservation.technologies}</p>
                   <p><strong>Type:</strong> {reservation.project_type}</p>
-                  <p><strong>Statut:</strong> {reservation.status}</p>
+                  <p><strong>Statut:</strong> {reservation.status || 'pending'}</p>
                   <p>
                     <strong>URL:</strong>{' '}
                     {reservation.deployed_url ? (
@@ -148,6 +198,22 @@ const ClientDomainReservations = () => {
                     >
                       <FaUpload /> Uploader Fichiers
                     </button>
+                  )}
+                  {userRole === 'client' && reservation.status === 'pending' && (
+                    <div className="admin-actions">
+                      <button
+                        className="edit-btn"
+                        onClick={() => setShowEditForm(reservation.id)}
+                      >
+                        <FaEdit /> Modifier
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDeleteReservation(reservation.id)}
+                      >
+                        <FaTrash /> Supprimer
+                      </button>
+                    </div>
                   )}
                   {projectFiles[reservation.id]?.length > 0 && (
                     <div className="file-list">
@@ -244,6 +310,129 @@ const ClientDomainReservations = () => {
             <div className="form-actions">
               <button type="submit">Ajouter</button>
               <button type="button" onClick={() => setShowAddForm(false)}>Annuler</button>
+            </div>
+          </form>
+        </section>
+      )}
+
+      {showEditForm && (
+        <section className="form-section">
+          <h2>Modifier Réservation #{showEditForm}</h2>
+          <form
+            onSubmit={(e) => handleEditReservation(e, showEditForm)}
+            className="reservation-form"
+          >
+            <div className="form-group">
+              <label>Nom de Domaine</label>
+              <input
+                type="text"
+                name="domainName"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.domain_name || ''}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Offre de Domaine</label>
+              <select
+                name="offerId"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.offer_id || ''}
+                required
+              >
+                <option value="">Choisir</option>
+                {domainOffers.map((offer) => (
+                  <option key={offer.id} value={offer.id}>
+                    {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Offre d'Hébergement</label>
+              <select
+                name="hostingOfferId"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.hosting_offer_id || ''}
+              >
+                <option value="">Aucune</option>
+                {hostingOffers.map((offer) => (
+                  <option key={offer.id} value={offer.id}>
+                    {offer.name} ({offer.price}€ pour {offer.duration_months} mois)
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Technologies</label>
+              <input
+                type="text"
+                name="technologies"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.technologies || ''}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label>Type de Projet</label>
+              <select
+                name="projectType"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.project_type || ''}
+                required
+              >
+                <option value="portfolio">Portfolio</option>
+                <option value="ecommerce">E-commerce</option>
+                <option value="blog">Blog</option>
+                <option value="business">Business</option>
+                <option value="other">Autre</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Besoin d'Hébergement</label>
+              <input
+                type="checkbox"
+                name="hostingNeeded"
+                defaultChecked={reservations.find((r) => r.id === showEditForm)?.hosting_needed || false}
+              />
+            </div>
+            <div className="form-group">
+              <label>Services Additionnels</label>
+              <input
+                type="text"
+                name="additionalServices"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.additional_services || ''}
+              />
+            </div>
+            <div className="form-group">
+              <label>Contact Préféré</label>
+              <select
+                name="preferredContactMethod"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.preferred_contact_method || ''}
+              >
+                <option value="email">Email</option>
+                <option value="phone">Téléphone</option>
+                <option value="both">Les deux</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Date Limite</label>
+              <input
+                type="date"
+                name="projectDeadline"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.project_deadline || ''}
+              />
+            </div>
+            <div className="form-group">
+              <label>Budget</label>
+              <select
+                name="budgetRange"
+                defaultValue={reservations.find((r) => r.id === showEditForm)?.budget_range || ''}
+              >
+                <option value="0-100">0-100€</option>
+                <option value="100-500">100-500€</option>
+                <option value="500-1000">500-1000€</option>
+                <option value="1000+">1000€ et plus</option>
+              </select>
+            </div>
+            <div className="form-actions">
+              <button type="submit">Modifier</button>
+              <button type="button" onClick={() => setShowEditForm(null)}>Annuler</button>
             </div>
           </form>
         </section>
@@ -354,7 +543,7 @@ const ClientDomainReservations = () => {
             color: #555;
           }
 
-          .upload-btn {
+          .upload-btn, .edit-btn, .delete-btn {
             background: #3498db;
             color: #fff;
             border: none;
@@ -368,8 +557,26 @@ const ClientDomainReservations = () => {
             transition: background 0.3s;
           }
 
-          .upload-btn:hover {
+          .upload-btn:hover, .edit-btn:hover {
             background: #2980b9;
+          }
+
+          .admin-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+          }
+
+          .edit-btn {
+            background: #f1c40f;
+          }
+
+          .delete-btn {
+            background: #e74c3c;
+          }
+
+          .delete-btn:hover {
+            background: #c0392b;
           }
 
           .file-list {

@@ -1,13 +1,97 @@
 // client/src/pages/Dashboard.jsx
-import React, { useState } from 'react';
-import { FaServer, FaUsers, FaDollarSign, FaChartLine, FaCog, FaSignOutAlt } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { FaUsers, FaDollarSign, FaChartLine, FaSignOutAlt, FaGlobe, FaBox, FaTachometerAlt, FaFileAlt } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
 import Clients from './Client';
 import '../Dashboard.css';
+import axios from 'axios';
 
 const Dashboard = () => {
   const [showClients, setShowClients] = useState(false);
   const [clientCount, setClientCount] = useState(0);
+  const [hostedSites, setHostedSites] = useState(0);
+  const [offerCount, setOfferCount] = useState(0);
+  const [reservationCount, setReservationCount] = useState(0);
+  const [monthlyRevenue, setMonthlyRevenue] = useState(0);
+  const navigate = useNavigate();
+
+  // Function to fetch all stats, including client count
+  const fetchStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('Token manquant, redirection vers /login');
+        navigate('/login');
+        return;
+      }
+
+      // Fetch reservations
+      const reservationsResponse = await axios.get('http://localhost:5000/api/reservations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Réservations récupérées:', reservationsResponse.data);
+      setReservationCount(reservationsResponse.data.length);
+
+      // Fetch offers
+      const offersResponse = await axios.get('http://localhost:5000/api/offers', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Offres récupérées:', offersResponse.data);
+      setOfferCount(offersResponse.data.length);
+
+      // Calculate hosted sites
+      const hostedCount = reservationsResponse.data.filter(
+        (res) => res.payment_status === 'paid' && res.hosting_needed
+      ).length;
+      console.log('Nombre de sites hébergés:', hostedCount);
+      setHostedSites(hostedCount);
+
+      // Fetch clients
+      const clientsResponse = await axios.get('http://localhost:5000/api/users?role=client', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Clients récupérés:', clientsResponse.data);
+      setClientCount(clientsResponse.data.length);
+
+      // Calculate total revenue from paid reservations
+      const paidReservations = reservationsResponse.data.filter(
+        (res) => res.payment_status === 'paid'
+      );
+      console.log('Réservations payées:', paidReservations);
+
+      let totalRevenue = 0;
+      for (const reservation of paidReservations) {
+        const offer = offersResponse.data.find((o) => o.id === reservation.offer_id);
+        if (offer) {
+          totalRevenue += offer.price || 0;
+        }
+      }
+      console.log('Revenus mensuels calculés:', totalRevenue);
+      setMonthlyRevenue(totalRevenue);
+    } catch (error) {
+      console.error('Erreur lors de la récupération des statistiques:', error);
+      console.error('Détails de l\'erreur:', error.response?.data || error.message);
+    }
+  };
+
+  // Initial fetch on component mount
+  useEffect(() => {
+    fetchStats();
+  }, [navigate]);
+
+  // Refetch stats when showClients changes
+  useEffect(() => {
+    if (!showClients) {
+      // When closing the Clients section, refetch stats to update client count
+      fetchStats();
+    }
+  }, [showClients]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   return (
     <div className="dashboard-container">
@@ -18,26 +102,27 @@ const Dashboard = () => {
         <nav className="sidebar-nav">
           <ul>
             <li className="active">
-              <FaServer className="icon" /> Dashboard
+              <FaTachometerAlt className="icon" /> Dashboard
             </li>
             <li onClick={() => setShowClients(!showClients)}>
               <FaUsers className="icon" /> Clients
             </li>
             <li>
               <Link to="/domain-reservations">
-                <FaServer className="icon" /> Réservations
+                <FaFileAlt className="icon" /> Réservations
               </Link>
             </li>
             <li>
-              <FaDollarSign className="icon" /> Facturation
+              <Link to="/offers">
+                <FaBox className="icon" /> Offres
+              </Link>
             </li>
             <li>
-              <FaChartLine className="icon" /> Statistiques
+              <Link to="/stats">
+                <FaChartLine className="icon" /> Statistiques
+              </Link>
             </li>
-            <li>
-              <FaCog className="icon" /> Paramètres
-            </li>
-            <li className="logout">
+            <li className="logout" onClick={handleLogout}>
               <FaSignOutAlt className="icon" /> Déconnexion
             </li>
           </ul>
@@ -53,37 +138,54 @@ const Dashboard = () => {
         </header>
 
         <div className="stats-grid">
-          <div className="stat-card">
-            <FaServer className="stat-icon" />
-            <div>
-              <h3>25</h3>
-              <p>Serveurs Actifs</p>
+          <Link to="/stats/clients" className="stat-link">
+            <div className="stat-card">
+              <FaUsers className="stat-icon" />
+              <div>
+                <h3>{clientCount}</h3>
+                <p>Clients</p>
+              </div>
             </div>
-          </div>
-          <div className="stat-card">
-            <FaUsers className="stat-icon" />
-            <div>
-              <h3>{clientCount}</h3>
-              <p>Clients</p>
+          </Link>
+          <Link to="/stats/revenue" className="stat-link">
+            <div className="stat-card">
+              <FaDollarSign className="stat-icon" />
+              <div>
+                <h3>{monthlyRevenue.toLocaleString('fr-FR')}€</h3>
+                <p>Revenus</p>
+              </div>
             </div>
-          </div>
-          <div className="stat-card">
-            <FaDollarSign className="stat-icon" />
-            <div>
-              <h3>12,450€</h3>
-              <p>Revenus Mensuels</p>
+          </Link>
+          <Link to="/stats/hosted-sites" className="stat-link">
+            <div className="stat-card">
+              <FaGlobe className="stat-icon" />
+              <div>
+                <h3>{hostedSites}</h3>
+                <p>Sites Hébergés</p>
+              </div>
             </div>
-          </div>
-          <div className="stat-card">
-            <FaChartLine className="stat-icon" />
-            <div>
-              <h3>98%</h3>
-              <p>Uptime</p>
+          </Link>
+          <Link to="/stats/offers" className="stat-link">
+            <div className="stat-card">
+              <FaBox className="stat-icon" />
+              <div>
+                <h3>{offerCount}</h3>
+                <p>Offres</p>
+              </div>
             </div>
-          </div>
+          </Link>
+          <Link to="/stats/reservations" className="stat-link">
+            <div className="stat-card">
+              <FaFileAlt className="stat-icon" />
+              <div>
+                <h3>{reservationCount}</h3>
+                <p>Réservations</p>
+              </div>
+            </div>
+          </Link>
         </div>
 
-        {showClients && <Clients setClientCount={setClientCount} />}
+        {showClients && <Clients setClientCount={setClientCount} fetchStats={fetchStats} />}
 
         <div className="recent-activity">
           <h2>Activité Récente</h2>
@@ -93,7 +195,7 @@ const Dashboard = () => {
               <span>il y a 2 heures</span>
             </div>
             <div className="activity-item">
-              <p>Mise à jour du serveur #5 terminée</p>
+              <p>Réservation acceptée pour client456.com</p>
               <span>il y a 4 heures</span>
             </div>
           </div>
@@ -196,6 +298,11 @@ const Dashboard = () => {
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
             text-align: center;
             transition: transform 0.2s;
+          }
+
+          .stat-link {
+            text-decoration: none;
+            color: inherit;
           }
 
           .stat-card:hover {

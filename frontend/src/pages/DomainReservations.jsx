@@ -1,3 +1,4 @@
+// client/src/pages/AdminDomainReservations.jsx
 import React, { useState, useEffect } from 'react';
 import { FaEdit, FaTrash, FaSearch, FaFilter } from 'react-icons/fa';
 import axios from 'axios';
@@ -17,34 +18,35 @@ const AdminDomainReservations = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
+  const [projectFiles, setProjectFiles] = useState({});
   const reservationsPerPage = 6;
 
   useEffect(() => {
-  const fetchReservations = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        window.location.href = '/login';
-        return;
+    const fetchReservations = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          window.location.href = '/login';
+          return;
+        }
+        const response = await axios.get('http://localhost:5000/api/reservations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setReservations(response.data);
+        setError(null);
+      } catch (error) {
+        if (error.response?.status === 401) {
+          toast.error('Session expirée. Veuillez vous reconnecter.');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        } else {
+          setError(error.response?.data?.error || 'Erreur lors du chargement des réservations.');
+          toast.error('Erreur lors du chargement des réservations.');
+        }
       }
-      const response = await axios.get('http://localhost:5000/api/reservations', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setReservations(response.data);
-      setError(null);
-    } catch (error) {
-      if (error.response?.status === 401) {
-        toast.error('Session expirée. Veuillez vous reconnecter.');
-        localStorage.removeItem('token');
-        window.location.href = '/login';
-      } else {
-        setError(error.response?.data?.error || 'Erreur lors du chargement des réservations.');
-        toast.error('Erreur lors du chargement des réservations.');
-      }
-    }
-  };
-  fetchReservations();
-}, []);
+    };
+    fetchReservations();
+  }, []);
 
   useEffect(() => {
     const fetchOffers = async () => {
@@ -66,71 +68,75 @@ const AdminDomainReservations = () => {
     fetchOffers();
   }, []);
 
-  const handleUpdateStatus = async (id, status) => {
+  useEffect(() => {
+    reservations.forEach((reservation) => {
+      if (reservation.status === 'accepted' && !projectFiles[reservation.id]) {
+        fetchProjectFiles(reservation.id);
+      }
+    });
+  }, [reservations, projectFiles]);
+
+  const fetchProjectFiles = async (reservationId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(
-        `http://localhost:5000/api/reservations/${id}/status`,
-        { status },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const response = await axios.get('http://localhost:5000/api/reservations', {
+      const response = await axios.get(`http://localhost:5000/api/project-files/${reservationId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setReservations(response.data);
-      setError(null);
-      toast.success(`Réservation ${status === 'accepted' ? 'acceptée' : 'refusée'} avec succès !`);
+      setProjectFiles((prev) => ({ ...prev, [reservationId]: response.data }));
     } catch (error) {
-      setError(error.response?.data?.error || 'Erreur lors de la mise à jour du statut.');
-      toast.error('Erreur lors de la mise à jour du statut.');
+      console.error('Erreur fetchProjectFiles:', error);
     }
   };
 
-// client/src/pages/AdminDomainReservations.jsx
-const handlePaymentStatusChange = async (id, newStatus) => {
+  const handleUpdateStatus = async (id, status) => {
+  console.log(`Updating status for reservation ${id} to ${status}`);
   try {
     const token = localStorage.getItem('token');
-    console.log('Token utilisé pour la requête:', token);
-    if (!token) {
-      toast.error('Aucun token trouvé. Veuillez vous reconnecter.');
-      window.location.href = '/login';
-      return;
-    }
-
-    console.log('Envoi de la requête PUT:', {
-      url: `http://localhost:5000/api/reservations/${id}/payment`,
-      data: { payment_status: newStatus },
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    const response = await axios.put(
-      `http://localhost:5000/api/reservations/${id}/payment`,
-      { payment_status: newStatus },
+    await axios.put(
+      `http://localhost:5000/api/reservations/${id}/status`,
+      { status },
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    console.log('Réponse de la requête PUT:', response.data);
-
-    const reservationsResponse = await axios.get('http://localhost:5000/api/reservations', {
+    const response = await axios.get('http://localhost:5000/api/reservations', {
       headers: { Authorization: `Bearer ${token}` },
     });
-    setReservations(reservationsResponse.data);
+    setReservations(response.data);
     setError(null);
-    toast.success('Statut de paiement mis à jour !');
-    if (newStatus === 'paid') {
-      toast.success('Notification envoyée au client !');
-    }
+    toast.success(`Réservation ${status === 'accepted' ? 'acceptée et SMS envoyé' : 'refusée'} avec succès !`);
   } catch (error) {
-    console.error('Erreur complète:', {
-      message: error.message,
-      response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
-    });
-    const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour du statut de paiement.';
-    setError(errorMessage);
-    toast.error(errorMessage);
+    setError(error.response?.data?.error || 'Erreur lors de la mise à jour du statut.');
+    toast.error('Erreur lors de la mise à jour du statut.');
   }
 };
+  const handlePaymentStatusChange = async (id, newStatus) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        toast.error('Aucun token trouvé. Veuillez vous reconnecter.');
+        window.location.href = '/login';
+        return;
+      }
+      const response = await axios.put(
+        `http://localhost:5000/api/reservations/${id}/payment`,
+        { payment_status: newStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const reservationsResponse = await axios.get('http://localhost:5000/api/reservations', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setReservations(reservationsResponse.data);
+      setError(null);
+      toast.success('Statut de paiement mis à jour !');
+      if (newStatus === 'paid') {
+        toast.success('Notification envoyée au client !');
+      }
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || error.message || 'Erreur lors de la mise à jour du statut de paiement.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+    }
+  };
+
   const handleEditReservation = async (e) => {
     e.preventDefault();
     if (!selectedReservation || !selectedReservation.id) {
@@ -148,7 +154,7 @@ const handlePaymentStatusChange = async (id, newStatus) => {
       preferredContactMethod: e.target.preferredContactMethod.value,
       projectDeadline: e.target.projectDeadline.value,
       budgetRange: e.target.budgetRange.value,
-      paymentStatus: e.target.paymentStatus.value, // Added payment status to form data
+      paymentStatus: e.target.paymentStatus.value,
     };
     try {
       const token = localStorage.getItem('token');
@@ -207,6 +213,9 @@ const handlePaymentStatusChange = async (id, newStatus) => {
   const totalPages = Math.ceil(filteredReservations.length / reservationsPerPage);
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
+  const isHosted = (reservation) =>
+    projectFiles[reservation.id]?.length > 0 && reservation.payment_status === 'paid' && reservation.hosting_needed;
 
   return (
     <div className="admin-reservations-page">
@@ -279,6 +288,19 @@ const handlePaymentStatusChange = async (id, newStatus) => {
                     <option value="paid">Payé</option>
                   </select>
                 </p>
+                {projectFiles[reservation.id]?.length > 0 && reservation.payment_status === 'paid' && reservation.hosting_needed && (
+                  <p>
+                    <strong>Lien d'Hébergement:</strong>{' '}
+                    <a
+                      href={`http://hosting.${reservation.domain_name}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hosting-link"
+                    >
+                      Accéder à l'hébergement
+                    </a>
+                  </p>
+                )}
                 <div className="card-actions">
                   {reservation.status === 'pending' && (
                     <>
@@ -299,15 +321,21 @@ const handlePaymentStatusChange = async (id, newStatus) => {
                   <button
                     className="edit-btn"
                     onClick={() => {
-                      setSelectedReservation(reservation);
-                      setShowEditModal(true);
+                      if (!isHosted(reservation)) {
+                        setSelectedReservation(reservation);
+                        setShowEditModal(true);
+                      }
                     }}
+                    disabled={isHosted(reservation)}
                   >
                     <FaEdit /> Modifier
                   </button>
                   <button
                     className="delete-btn"
-                    onClick={() => handleDeleteReservation(reservation.id)}
+                    onClick={() => {
+                      if (!isHosted(reservation)) handleDeleteReservation(reservation.id);
+                    }}
+                    disabled={isHosted(reservation)}
                   >
                     <FaTrash /> Supprimer
                   </button>
@@ -605,6 +633,15 @@ const handlePaymentStatusChange = async (id, newStatus) => {
             color: #fff;
           }
 
+          .hosting-link {
+            color: #2ecc71;
+            text-decoration: underline;
+          }
+
+          .hosting-link:hover {
+            color: #27ae60;
+          }
+
           .card-actions {
             display: flex;
             flex-wrap: wrap;
@@ -654,6 +691,11 @@ const handlePaymentStatusChange = async (id, newStatus) => {
             background: #d4ac0d;
           }
 
+          .edit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+          }
+
           .delete-btn {
             background: #e74c3c;
             color: #fff;
@@ -661,6 +703,11 @@ const handlePaymentStatusChange = async (id, newStatus) => {
 
           .delete-btn:hover {
             background: #c0392b;
+          }
+
+          .delete-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
           }
 
           .pagination {
