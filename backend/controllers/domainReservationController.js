@@ -33,7 +33,7 @@ const deployWebsite = async (reservation) => {
         fs.copyFileSync(sourcePath, destPath);
         console.log(`Fichier ${file.file_name} copié vers ${destPath}`);
       } else {
-        console.log(`Fichier source ${sourcePath} non trouvé`);
+        console.warn(`Fichier source ${sourcePath} non trouvé`);
       }
     }
 
@@ -64,6 +64,9 @@ const domainReservationController = {
   findById: async (id) => {
     try {
       const reservation = await DomainReservation.findById(id);
+      if (!reservation) {
+        throw new Error('Réservation non trouvée');
+      }
       return reservation;
     } catch (error) {
       console.error('Erreur lors de la recherche de la réservation:', error.message);
@@ -72,7 +75,19 @@ const domainReservationController = {
   },
 
   addReservation: async (req, res) => {
-    const { userId, domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange } = req.body;
+    const {
+      userId,
+      domainName,
+      offerId,
+      hostingOfferId,
+      technologies,
+      projectType,
+      hostingNeeded,
+      additionalServices,
+      preferredContactMethod,
+      projectDeadline,
+      budgetRange,
+    } = req.body;
     try {
       const isAvailable = await DomainReservation.checkDomainAvailability(domainName);
       if (!isAvailable) {
@@ -87,7 +102,7 @@ const domainReservationController = {
       if (hostingOfferId) {
         const hostingOffer = await Offer.findById(hostingOfferId);
         if (!hostingOffer || hostingOffer.offer_type !== 'hosting') {
-          return res.status(400).json({ message: 'Offre d\'hébergement invalide.' });
+          return res.status(400).json({ message: "Offre d'hébergement invalide." });
         }
       }
 
@@ -103,11 +118,11 @@ const domainReservationController = {
         preferredContactMethod,
         projectDeadline,
         budgetRange,
-        'unpaid' // Default payment status
+        'unpaid'
       );
       res.status(201).json({ message: 'Réservation ajoutée avec succès !', reservationId });
     } catch (error) {
-      console.error('Erreur lors de l\'ajout de la réservation:', error.message);
+      console.error("Erreur lors de l'ajout de la réservation:", error.message);
       res.status(500).json({ message: 'Erreur serveur.' });
     }
   },
@@ -135,14 +150,28 @@ const domainReservationController = {
 
   updateReservation: async (req, res) => {
     const { id } = req.params;
-    const { domainName, offerId, hostingOfferId, technologies, projectType, hostingNeeded, additionalServices, preferredContactMethod, projectDeadline, budgetRange, paymentStatus } = req.body;
+    const {
+      domainName,
+      offerId,
+      hostingOfferId,
+      technologies,
+      projectType,
+      hostingNeeded,
+      additionalServices,
+      preferredContactMethod,
+      projectDeadline,
+      budgetRange,
+      paymentStatus,
+    } = req.body;
     try {
       const reservation = await DomainReservation.findById(id);
       if (!reservation) {
         return res.status(404).json({ message: 'Réservation non trouvée.' });
       }
       if (reservation.status !== 'pending') {
-        return res.status(400).json({ message: 'Impossible de modifier une réservation déjà validée ou refusée.' });
+        return res.status(400).json({
+          message: 'Impossible de modifier une réservation déjà validée ou refusée.',
+        });
       }
 
       if (domainName !== reservation.domain_name) {
@@ -155,7 +184,7 @@ const domainReservationController = {
       if (hostingOfferId) {
         const hostingOffer = await Offer.findById(hostingOfferId);
         if (!hostingOffer || hostingOffer.offer_type !== 'hosting') {
-          return res.status(400).json({ message: 'Offre d\'hébergement invalide.' });
+          return res.status(400).json({ message: "Offre d'hébergement invalide." });
         }
       }
 
@@ -199,7 +228,9 @@ const domainReservationController = {
         return res.status(404).json({ message: 'Réservation non trouvée.' });
       }
       if (reservation.status !== 'pending') {
-        return res.status(400).json({ message: 'Impossible de supprimer une réservation déjà validée ou refusée.' });
+        return res.status(400).json({
+          message: 'Impossible de supprimer une réservation déjà validée ou refusée.',
+        });
       }
 
       await DomainReservation.delete(id);
@@ -229,12 +260,13 @@ const domainReservationController = {
 
       if (status === 'accepted') {
         const deployedUrl = await deployWebsite(reservation);
-        if (deployedUrl) {
-          await DomainReservation.updateDeployedUrl(id, deployedUrl);
-          return res.status(200).json({ message: 'Réservation acceptée avec succès !', deployedUrl });
-        } else {
-          return res.status(200).json({ message: 'Réservation acceptée, mais aucun fichier à déployer pour l\'instant.' });
-        }
+        await DomainReservation.updateDeployedUrl(id, deployedUrl);
+        return res.status(200).json({
+          message: deployedUrl
+            ? 'Réservation acceptée avec succès !'
+            : 'Réservation acceptée, mais aucun fichier à déployer pour l\'instant.',
+          deployedUrl,
+        });
       }
 
       res.status(200).json({ message: `Réservation ${status === 'accepted' ? 'acceptée' : 'refusée'} avec succès !` });
@@ -244,14 +276,70 @@ const domainReservationController = {
     }
   },
 
-  updatePaymentStatus: async (id, payment_status) => {
+  updatePaymentStatus: async (req, res) => {
+    const { id } = req.params;
+    const { payment_status } = req.body;
+    console.log(`Mise à jour du statut de paiement pour la réservation ${id}: ${payment_status}`);
     try {
+      const reservation = await DomainReservation.findById(id);
+      if (!reservation) {
+        return res.status(404).json({ message: 'Réservation non trouvée.' });
+      }
+      if (!['unpaid', 'paid'].includes(payment_status)) {
+        return res.status(400).json({ message: 'Statut de paiement invalide.' });
+      }
+
       await DomainReservation.updatePaymentStatus(id, payment_status);
+      const updatedReservation = await DomainReservation.findById(id);
+
+      let notificationSent = false;
+      if (payment_status === 'paid' && reservation.hosting_needed) {
+        const deployedUrl = await deployWebsite(reservation);
+        console.log(`Deployed URL: ${deployedUrl}`);
+        await DomainReservation.updateDeployedUrl(id, deployedUrl);
+        const phone = reservation.client_phone || reservation.phone;
+        console.log(`Numéro de téléphone pour la notification: ${phone}`);
+        if (phone && /^\+[1-9]\d{1,14}$/.test(phone)) {
+          try {
+            const twilioClient = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+            const message = await twilioClient.messages.create({
+              body: `Votre processus de paiement a été effectué avec succès. Vous pouvez consulter votre projet sur ce lien : ${deployedUrl || 'non disponible'}`,
+              from: process.env.TWILIO_PHONE_NUMBER,
+              to: phone,
+            });
+            console.log(`Notification de paiement envoyée à ${phone}, SID: ${message.sid}`);
+            notificationSent = true;
+          } catch (twilioError) {
+            console.error('Erreur Twilio (paiement):', {
+              message: twilioError.message,
+              code: twilioError.code,
+              moreInfo: twilioError.moreInfo,
+            });
+          }
+        } else {
+          console.warn(`Numéro de téléphone invalide ou manquant pour la réservation ${id}: ${phone}`);
+        }
+        return res.status(200).json({
+          message: notificationSent
+            ? 'Statut de paiement mis à jour et notification envoyée !'
+            : 'Statut de paiement mis à jour, mais échec de l\'envoi de la notification.',
+          reservation: updatedReservation,
+          deployedUrl,
+          notificationSent,
+        });
+      }
+
+      return res.status(200).json({
+        message: 'Statut de paiement mis à jour !',
+        reservation: updatedReservation,
+      });
     } catch (error) {
-      console.error('Erreur lors de la mise à jour du statut de paiement:', error.message);
-      throw error;
+      console.error('Erreur lors de la mise à jour du statut de paiement:', error.message, error.stack);
+      res.status(500).json({ message: 'Erreur lors de la mise à jour du statut de paiement.' });
     }
   },
+
+  deployWebsite,
 
   uploadProjectFiles: async (req, res) => {
     const { reservationId } = req.body;
@@ -266,25 +354,29 @@ const domainReservationController = {
         return res.status(404).json({ message: 'Réservation non trouvée.' });
       }
       if (reservation.status !== 'accepted') {
-        return res.status(400).json({ message: 'La réservation doit être acceptée pour uploader des fichiers.' });
+        return res.status(400).json({
+          message: 'La réservation doit être acceptée pour uploader des fichiers.',
+        });
       }
 
       const uploadDir = path.join(__dirname, '../Uploads', reservationId.toString());
-      console.log('Dossier d\'upload:', uploadDir);
+      console.log("Dossier d'upload:", uploadDir);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
-        console.log('Dossier d\'upload créé:', uploadDir);
+        console.log("Dossier d'upload créé:", uploadDir);
       }
 
       const uploadedFiles = [];
       const files = Array.isArray(req.files.files) ? req.files.files : [req.files.files];
-      console.log('Fichiers reçus:', files.map(f => f.name));
+      console.log('Fichiers reçus:', files.map((f) => f.name));
 
       const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
       for (const file of files) {
         console.log(`Taille du fichier ${file.name}: ${file.size} octets`);
         if (file.size > MAX_FILE_SIZE) {
-          return res.status(400).json({ message: `Le fichier ${file.name} dépasse la taille maximale de 10 MB.` });
+          return res.status(400).json({
+            message: `Le fichier ${file.name} dépasse la taille maximale de 10 MB.`,
+          });
         }
       }
 
@@ -315,8 +407,10 @@ const domainReservationController = {
         }
       }
 
-      console.log('Fichiers uploadés:', uploadedFiles.map(f => f.file_name));
-      const hasIndexHtml = uploadedFiles.some(file => file.file_name.toLowerCase() === 'index.html');
+      console.log('Fichiers uploadés:', uploadedFiles.map((f) => f.file_name));
+      const hasIndexHtml = uploadedFiles.some((file) =>
+        file.file_name.toLowerCase() === 'index.html'
+      );
       if (!hasIndexHtml) {
         for (const file of uploadedFiles) {
           if (fs.existsSync(file.file_path)) {
@@ -326,17 +420,21 @@ const domainReservationController = {
         for (const file of uploadedFiles) {
           await ProjectFile.deleteByReservationId(reservationId);
         }
-        return res.status(400).json({ message: 'Un fichier index.html est requis pour déployer le site.' });
+        return res.status(400).json({
+          message: 'Un fichier index.html est requis pour déployer le site.',
+        });
       }
 
       const deployedUrl = await deployWebsite(reservation);
-      if (deployedUrl) {
-        await DomainReservation.updateDeployedUrl(reservationId, deployedUrl);
-      }
+      await DomainReservation.updateDeployedUrl(reservationId, deployedUrl);
 
-      res.status(200).json({ message: 'Fichiers uploadés avec succès !', files: uploadedFiles, deployedUrl });
+      res.status(200).json({
+        message: 'Fichiers uploadés avec succès !',
+        files: uploadedFiles,
+        deployedUrl,
+      });
     } catch (error) {
-      console.error('Erreur lors de l\'upload des fichiers:', error.message);
+      console.error("Erreur lors de l'upload des fichiers:", error.message);
       res.status(500).json({ message: 'Erreur serveur.' });
     }
   },
@@ -376,11 +474,7 @@ const domainReservationController = {
       console.log('Fichier supprimé de la base de données:', id);
 
       const deployedUrl = await deployWebsite(reservation);
-      if (deployedUrl) {
-        await DomainReservation.updateDeployedUrl(reservation.id, deployedUrl);
-      } else {
-        await DomainReservation.updateDeployedUrl(reservation.id, null);
-      }
+      await DomainReservation.updateDeployedUrl(reservation.id, deployedUrl);
 
       res.status(200).json({ message: 'Fichier supprimé avec succès !', deployedUrl });
     } catch (error) {
